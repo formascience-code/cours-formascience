@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Écran prof · cours interactif UE2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>
+html{font-size:clamp(14px,1.2vw,24px)}
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#app{flex:1;min-height:0;display:flex;flex-direction:column}
+.rail{display:flex;gap:.35rem;padding:.6rem 1.2rem 0}
+.seg{flex:1 1 0;display:flex;flex-direction:column;gap:.25rem;min-width:0}
+.seg .lab{font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;color:var(--sage-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dots{display:flex;gap:.2rem}
+.dot{height:.4rem;flex:1;border:0;border-radius:.2rem;background:var(--line);padding:0}
+.dot.done{background:var(--sage)} .dot.cur{background:var(--honey)}
+main{flex:1;min-height:0;padding:1.2rem 2.4rem 1rem;display:flex;flex-direction:column;gap:.9rem;overflow:auto}
+.eyebrow{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--honey);font-weight:600}
+h1.title{font-size:1.9rem;font-weight:700;color:var(--sage-ink);margin:0;line-height:1.2;text-wrap:balance}
+.q{font-size:1.2rem;margin:0;font-weight:500}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:center}
+.pts{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:.55em;font-size:1.08rem;line-height:1.4}
+.pts b{color:var(--sage-ink)}
+.slide{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:2rem;align-items:center}
+.slide.solo{grid-template-columns:minmax(0,1fr)}
+.animbox{display:flex;flex-direction:column;gap:.6rem;width:100%;margin:0 auto}
+.subtitle{font-size:1.25rem;font-weight:600;margin:0;color:var(--ink)}
+.slidepos{font-size:.7rem;color:var(--muted)}
+.wait{color:var(--muted)}
+.counter{font-variant-numeric:tabular-nums}
+.big-code{font-size:3.4rem;font-weight:700;letter-spacing:.12em;color:var(--plum)}
+#qr{background:#fff;padding:12px;border-radius:12px;display:inline-block}
+#qr svg{display:block;width:min(42vh,24rem);height:auto}
+.url{font-size:.8rem;color:var(--muted);word-break:break-all}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;color:var(--honey)}
+.correction{font-size:1rem;background:var(--ok-soft);color:var(--ink);border-radius:.6rem;padding:.6rem .9rem}
+footer{border-top:1px solid var(--line);background:var(--surface);padding:.5rem 1.2rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;font-size:.75rem}
+footer button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:.5rem;padding:.4rem .8rem;font-size:.75rem}
+footer .primary{background:var(--btn);color:#fff;border-color:var(--btn);font-weight:600}
+footer .sp{flex:1}
+footer .info{color:var(--muted);font-variant-numeric:tabular-nums}
+.notes{position:fixed;right:1rem;bottom:3.4rem;width:min(26rem,90vw);background:var(--surface);border:1px solid var(--line);border-radius:.8rem;padding:.8rem 1rem;font-size:.75rem;box-shadow:0 10px 30px -12px rgba(0,0,0,.35)}
+.notes h3{margin:0 0 .3rem;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--sage-ink)}
+.notes ul{margin:0;padding-left:1.1em}
+.start{max-width:40rem;margin:auto;display:flex;flex-direction:column;gap:1rem;padding:2rem}
+.start img{height:2.4rem;width:auto;align-self:flex-start}
+.start button{align-self:flex-start;border:0;border-radius:.6rem;padding:.7rem 1.3rem;font-size:1rem;background:var(--btn);color:#fff;font-weight:600}
+.start .alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.err{color:var(--ko)}
+</style>
+</head>
+<body>
+<div id="banner"></div>
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="qrcode.js"></script>
+<script src="config.js"></script>
+<script src="backend.js"></script>
+<script src="content.js"></script>
+<script src="shared.js"></script>
+<script>
+const B = window.Backend, C = window.COURSE, S = C.steps;
+const app = document.getElementById('app');
+let code = null, state = null, uid = null, showNotes = false, count = 0;
+const ans = {}, subs = {};
+let tick = null;
+
+if (B.mode === 'demo') document.getElementById('banner').innerHTML = '<div class="demo-banner">Mode démo : sans Firebase, seuls les onglets de ce navigateur sont reliés. Ouvre l\'écran étudiant dans un autre onglet pour essayer.</div>';
+
+function studentURL() { return new URL('index.html?c=' + code, location.href).href; }
+function initPhase(k) { return k === 'peer' ? 'r1' : k === 'quiz' ? 'intro' : 'open'; }
+
+/* ---------- Démarrage ---------- */
+async function boot() {
+  try { uid = await B.init(); } catch (e) { app.innerHTML = `<div class="start"><p class="err">Connexion impossible : ${esc(e.message || e)}. Vérifie config.js et la connexion anonyme dans Firebase.</p></div>`; return; }
+  let prev = null; try { prev = localStorage.getItem('ue2-prof-code'); } catch (e) {}
+  if (prev && (await B.sessionHost(prev)) !== uid) prev = null;
+  app.innerHTML = `<div class="start"><img src="img/logo.png" alt="formaScience"><h1 class="title">${esc(C.title)}</h1><p>${esc(C.subtitle)} · ${S.length} étapes · ${S.reduce((a, s) => a + s.min, 0)} min</p>
+    <button id="new">Démarrer une nouvelle séance</button>${prev ? `<button class="alt" id="resume">Reprendre la séance ${prev}</button>` : ''}
+    <p class="wait">Raccourcis pendant le cours : → action suivante (diapo, animation, résultats…) · ← retour · N notes du prof.</p></div>`;
+  document.getElementById('new').onclick = async () => {
+    if (prev) await B.clear(prev);
+    code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+    await B.createSession(code); start();
+  };
+  if (prev) document.getElementById('resume').onclick = () => { code = prev; start(); };
+}
+function start() {
+  try { localStorage.setItem('ue2-prof-code', code); } catch (e) {}
+  app.innerHTML = `<nav class="rail" id="rail"></nav><main id="main"></main><div class="notes" id="notes" hidden></div>
+  <footer><button id="prev">← Étape précédente</button><button class="primary" id="act"></button><button id="next">Étape suivante →</button>
+  <span class="info" id="info"></span><span class="sp"></span><span class="info">Séance <b>${code}</b> · <span id="cnt">0</span> connectés</span>
+  <button id="nt">Notes (N)</button><button id="stop">Terminer la séance</button></footer>`;
+  B.onCount(code, (n) => { count = n; const c = document.getElementById('cnt'); if (c) c.textContent = n; const c2 = document.getElementById('cnt2'); if (c2) c2.textContent = n; });
+  B.onState(code, (s) => { if (!s) { ended(); return; } state = s; syncSubs(); render(); });
+  document.getElementById('prev').onclick = () => goStep(state.step - 1);
+  document.getElementById('next').onclick = () => goStep(state.step + 1);
+  document.getElementById('nt').onclick = toggleNotes;
+  document.getElementById('stop').onclick = stopAsk;
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest('input,textarea,select')) return;
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); const a = document.getElementById('act'); if (a) a.hidden ? goStep(state.step + 1) : a.click(); }
+    if (e.key === 'ArrowLeft') back();
+    if (e.key.toLowerCase() === 'n') toggleNotes();
+  });
+}
+function toggleNotes() { showNotes = !showNotes; render(); }
+function stopAsk() {
+  const b = document.getElementById('stop');
+  if (b.dataset.armed) { B.clear(code).then(() => { try { localStorage.removeItem('ue2-prof-code'); } catch (e) {} ended(); }); return; }
+  b.dataset.armed = '1'; b.textContent = 'Confirmer : tout effacer'; b.style.borderColor = 'var(--ko)'; b.style.color = 'var(--ko)';
+  setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Terminer la séance'; b.style = ''; } }, 4000);
+}
+function ended() { clearInterval(tick); state = null; Object.keys(subs).forEach((k) => { subs[k](); delete subs[k]; }); app.innerHTML = `<div class="start"><img src="img/logo.png" alt="formaScience"><h1 class="title">Séance terminée</h1><p>Toutes les réponses ont été effacées.</p><button onclick="location.reload()">Nouvelle séance</button></div>`; }
+
+function back() {
+  const st = S[state.step];
+  if (st.kind === 'explain' && ((state.k || 0) > 0 || (state.sub || 0) > 0)) {
+    if ((state.k || 0) > 0) set({ k: state.k - 1 }); else { const p = st.slides[state.sub - 1]; set({ sub: state.sub - 1, k: p.anim ? ANIMS[p.anim].caps.length - 1 : 0 }); }
+  } else goStep(state.step - 1);
+}
+function goStep(i) {
+  if (i < 0 || i >= S.length) return;
+  B.setState(code, { step: i, phase: initPhase(S[i].kind), qi: 0, sub: 0, k: 0, until: null, qStart: null, board: null });
+}
+const set = (p) => B.setState(code, p);
+
+/* ---------- Abonnements aux réponses ---------- */
+function neededKeys() {
+  const st = S[state.step], k = 's' + state.step;
+  if (st.kind === 'peer') return [k + 'r1', k + 'r2'];
+  if (st.kind === 'quiz') return st.qs.map((_, i) => k + 'q' + i);
+  if (['cloud', 'poll', 'tap', 'number', 'match', 'order', 'classify'].includes(st.kind)) return [k];
+  return [];
+}
+function syncSubs() {
+  const need = new Set(neededKeys());
+  Object.keys(subs).forEach((k) => { if (!need.has(k)) { subs[k](); delete subs[k]; } });
+  need.forEach((k) => { if (!subs[k]) subs[k] = B.onAnswers(code, k, (v) => { ans[k] = v; render(); }); });
+}
+const vals = (k) => Object.values(ans[k] || {});
+
+/* ---------- Affichage ---------- */
+function render() {
+  if (!state || !document.getElementById('rail')) return;
+  const i = state.step, st = S[i];
+  const rail = document.getElementById('rail');
+  rail.innerHTML = C.parts.map((p, pi) => `<div class="seg"><span class="lab">${esc(p)}</span><div class="dots">${S.map((s, j) => s.part !== pi ? '' : `<button class="dot ${j < i ? 'done' : ''} ${j === i ? 'cur' : ''}" data-j="${j}" title="${esc(s.title)}" aria-label="Aller à : ${esc(s.title)}"></button>`).join('')}</div></div>`).join('');
+  rail.querySelectorAll('.dot').forEach((d) => d.onclick = () => goStep(+d.dataset.j));
+  const done = S.slice(0, i).reduce((a, s) => a + s.min, 0), tot = S.reduce((a, s) => a + s.min, 0);
+  document.getElementById('info').textContent = `Étape ${i + 1}/${S.length} · ${done}→${done + st.min} min sur ${tot}`;
+  document.getElementById('prev').disabled = i === 0;
+  document.getElementById('prev').onclick = () => goStep(i - 1);
+  document.getElementById('next').disabled = i === S.length - 1;
+  const n = document.getElementById('notes'); n.hidden = !showNotes;
+  const sn = st.kind === 'explain' ? (st.slides[state.sub || 0].notes || []) : [];
+  n.innerHTML = `<h3>Notes du prof · ${st.min} min</h3><ul>${[...sn, ...(st.notes || [])].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  clearInterval(tick); tick = null;
+  const act = document.getElementById('act');
+  const a = R[st.kind](st, document.getElementById('main'));
+  if (a) { act.hidden = false; act.textContent = a[0] + ' →'; act.onclick = a[1]; }
+  else { act.hidden = true; act.onclick = () => goStep(i + 1); }
+}
+const head = (st, eyebrow) => `<span class="eyebrow">${esc(eyebrow || C.parts[st.part])}</span><h1 class="title">${esc(st.title)}</h1>`;
+const nAns = (k) => `<span class="wait"><b class="counter">${vals(k).length}</b> réponse(s) · <span id="cnt2">${count}</span> connectés</span>`;
+const R = {};
+
+R.join = (st, m) => {
+  m.innerHTML = `${head(st, 'Début du cours')}<div class="cols"><div style="display:flex;flex-direction:column;gap:1rem">
+    <p class="q">Scanne le QR code avec l'appareil photo de ton téléphone, ou ouvre le lien et tape le code :</p>
+    <div class="big-code">${code}</div><p class="url">${esc(studentURL())}</p>
+    <p class="q"><b class="counter" id="cnt2">${count}</b> connectés</p></div><div><div id="qr"></div></div></div>`;
+  const q = document.getElementById('qr');
+  if (location.protocol === 'file:') {
+    q.innerHTML = '<p class="wait" style="padding:1rem;max-width:22rem">Le QR code ne fonctionne pas quand la page est ouverte depuis l\'ordinateur (adresse « file:// »). Il marche une fois le site en ligne sur GitHub Pages. En attendant, essaie le mode démo dans un 2e onglet.</p>';
+  } else if (window.qrcode) {
+    const g = qrcode(0, 'M'); g.addData(studentURL()); g.make();
+    q.innerHTML = g.createSvgTag({ cellSize: 8, margin: 4, scalable: true });
+  } else q.innerHTML = '<p class="wait" style="padding:1rem">QR code indisponible : donne le lien ci-contre.</p>';
+  return null;
+};
+R.explain = (st, m) => {
+  const sub = state.sub || 0, k = state.k || 0, sl = st.slides[sub], n = st.slides.length;
+  const pos = `<span class="slidepos">Diapo ${sub + 1} / ${n}</span>`;
+  let body;
+  if (sl.anim) {
+    const A = ANIMS[sl.anim];
+    const ratio = sl.anim === 'compaction' ? 1.79 : sl.anim === 'nmd' ? 3.1 : sl.anim === 'promoteurs' ? 2.9 : sl.anim === 'epissage' ? 2.2 : 2.43;
+    body = `<div class="animbox" style="max-width:calc((100vh - 17rem) * ${ratio})">${A.draw(k)}<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div></div>`;
+  } else if (sl.table) {
+    body = `${renderTable(sl.table)}${sl.memo ? `<div class="memo">${sl.memo.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : ''}`;
+  } else {
+    body = `<div class="slide ${sl.img ? '' : 'solo'}"><ul class="pts">${sl.pts.map((p) => `<li>${p}</li>`).join('')}</ul>${sl.img ? `<img class="fig" src="img/${sl.img}.png" alt="Schéma">` : ''}</div>`;
+  }
+  m.innerHTML = `<span class="eyebrow">${esc(C.parts[st.part])} · ${pos}</span><h1 class="title">${esc(sl.t)}</h1>${body}`;
+  if (sl.anim && k < ANIMS[sl.anim].caps.length - 1) return ['Animation : étape suivante', () => set({ k: k + 1 })];
+  if (sub < n - 1) return [`Diapo suivante (${sub + 2}/${n})`, () => set({ sub: sub + 1, k: 0 })];
+  return null;
+};
+R.cloud = (st, m) => {
+  const k = 's' + state.step, c = {};
+  vals(k).forEach((v) => { const w = String(v.w || '').trim().toLowerCase(); if (w) c[w] = (c[w] || 0) + 1; });
+  const ws = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 40), mx = Math.max(1, ...ws.map((x) => x[1]));
+  m.innerHTML = `${head(st, 'Brise-glace')}<div class="cloud" style="font-size:1.1rem">${ws.map(([w, n]) => `<span style="font-size:${1 + 2.2 * n / mx}em">${esc(w)}</span>`).join('') || '<span class="wait">Les mots apparaissent ici…</span>'}</div>${nAns(k)}`;
+  return null;
+};
+R.poll = (st, m) => {
+  const k = 's' + state.step, v = vals(k), ph = state.phase, cnt = st.opts.map((_, i) => v.filter((x) => x.i === i).length), tot = Math.max(1, v.length);
+  let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
+  const fig = st.svg ? `<div style="max-width:min(100%,calc((100vh - 22rem) * 3.1))">${CASE_SVG[st.svg]()}</div>` : st.img ? `<img class="fig" src="img/${st.img}.png" alt="" style="max-width:40rem">` : '';
+  if (ph === 'open') { m.innerHTML = h + fig + nAns(k); return ['Afficher les résultats', () => set({ phase: 'results' })]; }
+  h += `<div class="bars">${st.opts.map((o, i) => { const p = Math.round(cnt[i] / tot * 100); return `<div class="bar ${ph === 'reveal' && i === st.good ? 'good' : ''}"><span class="k">${L[i]}</span><div><div class="txt">${esc(o)}</div><div class="track"><div class="fill" style="width:${p}%"></div></div></div><span class="pct">${p} %</span></div>`; }).join('')}</div>${nAns(k)}`;
+  if (ph === 'results') { m.innerHTML = h; return ['Afficher la réponse', () => set({ phase: 'reveal' })]; }
+  m.innerHTML = h + `<p class="correction"><b>Correction.</b> ${esc(st.ex)}</p>`; return null;
+};
+R.tap = (st, m) => {
+  const k = 's' + state.step, v = vals(k), ph = state.phase, [x1, y1, x2, y2] = st.zone;
+  const pins = ph === 'open' ? '' : v.map((p) => `<span class="pin" style="left:${p.x}%;top:${p.y}%"></span>`).join('');
+  const zone = ph === 'reveal' ? `<div class="zone" style="left:${x1}%;top:${y1}%;width:${x2 - x1}%;height:${y2 - y1}%"></div>` : '';
+  const ok = v.filter((p) => inZone(st, p)).length;
+  m.innerHTML = `${head(st)}<p class="q">${esc(st.q)}</p><div class="tapbox" style="max-width:62rem"><img src="img/${st.img}.png" alt="Schéma">${pins}${zone}</div>${nAns(k)}${ph === 'reveal' ? `<p class="correction"><b>Correction.</b> ${esc(st.ex)} <b>${pct(ok, v.length)} %</b> ont touché la bonne zone.</p>` : ''}`;
+  if (ph === 'open') return ['Afficher les clics', () => set({ phase: 'results' })];
+  if (ph === 'results') return ['Afficher la zone juste', () => set({ phase: 'reveal' })];
+  return null;
+};
+R.number = (st, m) => {
+  const k = 's' + state.step, v = vals(k), ph = state.phase, c = {};
+  v.forEach((x) => { if (Number.isFinite(x.v)) c[x.v] = (c[x.v] || 0) + 1; });
+  const e = Object.entries(c).map(([a, b]) => [+a, b]).sort((a, b) => a[0] - b[0]).slice(0, 14), mx = Math.max(1, ...e.map((x) => x[1]));
+  let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
+  if (ph === 'open') { m.innerHTML = h + nAns(k); return ['Afficher les réponses', () => set({ phase: 'results' })]; }
+  h += `<div class="histo">${e.map(([val, n]) => `<div class="col ${ph === 'reveal' && val === st.good ? 'good' : ''}"><span class="n">${n}</span><div class="b" style="height:${n / mx * 100}%"></div><span class="v">${val}</span></div>`).join('')}</div>${nAns(k)}`;
+  if (ph === 'results') { m.innerHTML = h; return ['Afficher la réponse', () => set({ phase: 'reveal' })]; }
+  m.innerHTML = h + `<p class="correction"><b>Correction.</b> ${esc(st.ex)}</p>`; return null;
+};
+R.match = (st, m) => {
+  const k = 's' + state.step, v = vals(k), ph = state.phase;
+  let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
+  if (ph === 'open') { m.innerHTML = h + nAns(k); return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
+  m.innerHTML = h + `<div class="bars">${st.pairs.map((p, i) => { const r = pct(v.filter((x) => x.a && x.a[i] === p[1]).length, v.length); return `<div class="bar good"><span class="k">${i + 1}</span><div><div class="txt"><b>${esc(p[0])}</b> → ${esc(p[1])}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`; }).join('')}</div><p class="wait">% d'étudiants qui ont trouvé chaque association · ${v.length} réponse(s)</p>`;
+  return null;
+};
+R.order = (st, m) => {
+  const k = 's' + state.step, v = vals(k), ph = state.phase;
+  let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
+  if (ph === 'open') { m.innerHTML = h + nAns(k); return ['Afficher le bon ordre', () => set({ phase: 'reveal' })]; }
+  m.innerHTML = h + `<div class="bars">${st.items.map((t, i) => { const r = pct(v.filter((x) => x.o && x.o[i] === i).length, v.length); return `<div class="bar good"><span class="k">${i + 1}</span><div><div class="txt">${esc(t)}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`; }).join('')}</div><p class="wait">% d'étudiants qui ont mis chaque étape à la bonne place · ${v.length} réponse(s)</p>`;
+  return null;
+};
+R.classify = (st, m) => {
+  const k = 's' + state.step, v = vals(k), ph = state.phase;
+  let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
+  if (ph === 'open') { m.innerHTML = h + `<div class="memo">${st.items.map(([t]) => `<span>${esc(t)}</span>`).join('')}</div>` + nAns(k); return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
+  const rows = st.items.map(([t, a], i) => [t, a, pct(v.filter((x) => x.c && x.c[i] === a).length, v.length)]).sort((x, y) => x[2] - y[2]);
+  m.innerHTML = h + `<div class="bars" style="font-size:.9rem">${rows.map(([t, a, r]) => `<div class="bar ${r >= 70 ? 'good' : ''}"><span class="k"></span><div><div class="txt">${esc(t)} → ${a === 'A' ? '<span class="pill act">Active</span>' : '<span class="pill rep">Réprime</span>'}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`).join('')}</div><p class="wait">% de bonnes réponses par situation, des plus ratées aux mieux réussies · ${v.length} réponse(s)</p>`;
+  return null;
+};
+R.peer = (st, m) => {
+  const k = 's' + state.step, ph = state.phase, v1 = vals(k + 'r1'), v2 = vals(k + 'r2');
+  const share = (v, i) => pct(v.filter((x) => (x.s || '').includes(L[i])).length, v.length);
+  const bars = (two, rev) => `<div class="bars">${st.items.map((t, i) => { const good = rev && st.ok.includes(L[i]), a = share(v1, i), b = share(v2, i);
+    return `<div class="bar ${good ? 'good' : ''}"><span class="k">${L[i]}</span><div><div class="txt">${esc(t)}</div><div class="track ${two ? 'two' : ''}">${two ? `<div class="fill r1" style="width:${a}%"></div>` : ''}<div class="fill" style="width:${two ? b : a}%"></div></div>${rev ? `<div class="ex">${esc(st.ex[i])}</div>` : ''}</div><span class="pct">${two ? b : a} %</span></div>`; }).join('')}</div>`;
+  const leg = (rev) => `<div class="legend"><span><span class="sw" style="background:var(--line)"></span>1er vote (${v1.length})</span><span><span class="sw" style="background:${rev ? 'var(--ok)' : 'var(--sage)'}"></span>2e vote (${v2.length})</span></div>`;
+  if (ph === 'r1') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er vote')}<p class="q">${esc(st.q)}</p><p class="wait">Vote seul, sans en parler à ton voisin.</p>${nAns(k + 'r1')}`; return ['Afficher le 1er vote', () => set({ phase: 'r1res' })]; }
+  if (ph === 'r1res') { m.innerHTML = `${head(st, C.parts[st.part] + ' · résultats du 1er vote')}${bars(false, false)}<p class="wait">% d'étudiants qui ont coché chaque proposition (${v1.length} votes) · pas de correction à ce stade</p>`; return ['Lancer la discussion (2 min)', () => set({ phase: 'disc', until: B.now() + 120000 })]; }
+  if (ph === 'disc') {
+    m.innerHTML = `${head(st, 'Discussion')}<p class="q" style="font-size:1.6rem">Trouve un voisin qui n'a pas voté comme toi et convainc-le.</p><div class="timer" style="font-size:4rem" id="tm"></div>`;
+    const up = () => { const t = Math.max(0, Math.round((state.until - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+    up(); tick = setInterval(up, 500);
+    return ['Ouvrir le 2e vote', () => set({ phase: 'r2' })];
+  }
+  if (ph === 'r2') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 2e vote')}<p class="q">${esc(st.q)}</p><p class="wait">Revote : tu peux changer d'avis.</p>${nAns(k + 'r2')}`; return ['Afficher les 2 votes', () => set({ phase: 'r2res' })]; }
+  if (ph === 'r2res') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er et 2e votes')}${bars(true, false)}${leg(false)}`; return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
+  m.innerHTML = `${head(st, 'Correction · réponses ' + st.ok.split('').join(', '))}${bars(true, true)}${leg(true)}`; return null;
+};
+function quizScores(st) {
+  const k = 's' + state.step, sc = {}, names = {};
+  st.qs.forEach((q, i) => Object.entries(ans[k + 'q' + i] || {}).forEach(([u, x]) => { names[u] = x.n || names[u]; sc[u] = (sc[u] || 0) + (x.a === q[1] ? 500 + Math.round(500 * Math.max(0, 1 - x.ms / (st.seconds * 1000))) : 0); }));
+  return Object.entries(sc).map(([u, s]) => [names[u] || 'Anonyme', s, u]).sort((a, b) => b[1] - a[1]);
+}
+R.quiz = (st, m) => {
+  const k = 's' + state.step, ph = state.phase, qi = state.qi || 0;
+  if (ph === 'intro') { m.innerHTML = `${head(st, 'Fin du cours')}<p class="q">${st.qs.length} affirmations, vrai ou faux, ${st.seconds} secondes chacune. Les points dépendent de la justesse et de la rapidité.</p><p class="wait">Choisis ton pseudo sur ton téléphone.</p>`; return ['Lancer la question 1', () => set({ phase: 'q', qi: 0, qStart: B.now() })]; }
+  const [txt, good] = st.qs[qi];
+  if (ph === 'q') {
+    m.innerHTML = `${head(st, `Question ${qi + 1} / ${st.qs.length}`)}<p class="q" style="font-size:1.8rem;font-weight:600">${esc(txt)}</p><div class="timer" style="font-size:3.4rem" id="tm"></div>${nAns(k + 'q' + qi)}`;
+    const up = () => { const t = Math.max(0, Math.ceil((state.qStart + st.seconds * 1000 - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = t; if (t <= 0) { clearInterval(tick); if (state.phase === 'q') set({ phase: 'qres' }); } };
+    up(); tick = setInterval(up, 250);
+    return ['Arrêter et corriger', () => set({ phase: 'qres' })];
+  }
+  if (ph === 'qres') {
+    const v = vals(k + 'q' + qi), ok = v.filter((x) => x.a === good).length;
+    m.innerHTML = `${head(st, `Question ${qi + 1} / ${st.qs.length}`)}<p class="q" style="font-size:1.6rem">${esc(txt)}</p><p class="correction" style="font-size:1.3rem"><b>Réponse : ${good ? 'vrai' : 'faux'}.</b> ${pct(ok, v.length)} % de bonnes réponses.</p>`;
+    return qi + 1 < st.qs.length ? [`Question ${qi + 2}`, () => set({ phase: 'q', qi: qi + 1, qStart: B.now() })] : ['Afficher le classement', () => set({ phase: 'board', board: quizScores(st).slice(0, 10) })];
+  }
+  const top = state.board || quizScores(st).slice(0, 10);
+  m.innerHTML = `${head(st, 'Classement')}<div class="board">${top.map(([n, s], i) => `<div class="row ${i < 3 ? 'top' : ''}"><span>${i + 1}</span><span>${esc(n)}</span><span class="s">${s}</span></div>`).join('') || '<p class="wait">Aucune réponse.</p>'}</div>`;
+  return null;
+};
+R.end = (st, m) => {
+  m.innerHTML = `${head(st, 'Après le cours')}<p class="wait">Calcul…</p>`;
+  B.allAnswers(code).then((all) => {
+    if (S[state.step] !== st) return;
+    const rows = [];
+    S.forEach((s, i) => {
+      const k = 's' + i, v = (x) => Object.values(all[x] || {});
+      const r = (x, f) => { const a = v(x); return a.length ? [pct(a.filter(f).length, a.length), a.length] : null; };
+      let res = null, label = s.title;
+      if (s.kind === 'poll') { res = r(k, (x) => x.i === s.good); label = s.q; }
+      if (s.kind === 'tap') { res = r(k, (x) => inZone(s, x)); label = s.q; }
+      if (s.kind === 'number') { res = r(k, (x) => x.v === s.good); label = s.q; }
+      if (s.kind === 'match') { res = r(k, (x) => x.a && x.a.every((y, j) => y === s.pairs[j][1])); label = s.q; }
+      if (s.kind === 'order') { res = r(k, (x) => x.o && x.o.every((y, j) => y === j)); label = s.q; }
+      if (s.kind === 'classify') { res = r(k, (x) => x.c && x.c.every((y, j) => y === s.items[j][1])); label = s.title + ' (tout juste)'; }
+      if (s.kind === 'poll' && s.part === 0 && i === 2) label = 'Diagnostic : même génome';
+      if (s.kind === 'peer') { const a = r(k + 'r1', (x) => x.s === s.ok), b = r(k + 'r2', (x) => x.s === s.ok); if (a || b) { rows.push([C.parts[s.part] + ' · QCM (1er vote → 2e vote)', b ? b[0] : a[0], `${a ? a[0] : '–'} % → ${b ? b[0] : '–'} %`]); } return; }
+      if (res) rows.push([label, res[0], res[1] + ' rép.']);
+    });
+    m.innerHTML = `${head(st, 'Après le cours')}<p class="wait">Taux de réponses entièrement justes. Note ce qu'il faut reprendre en permanence : tout est effacé quand tu termines la séance.</p>
+    <div class="bars" style="font-size:.85rem">${rows.map(([t, p, n]) => `<div class="bar ${p >= 70 ? 'good' : ''}"><span class="k"></span><div><div class="txt">${esc(t)}</div><div class="track"><div class="fill" style="width:${p}%"></div></div></div><span class="pct" style="width:auto">${p} %</span></div><div class="fic" style="margin:-.3rem 0 0 2.3em">${esc(n)}</div>`).join('') || '<p class="wait">Pas encore de réponses.</p>'}</div>`;
+  });
+  return null;
+};
+boot();
+</script>
+</body>
+</html>

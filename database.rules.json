@@ -1,0 +1,31 @@
+{
+  "rules": {
+    "sessions": {
+      "$code": {
+        ".read": true,
+        ".write": "auth != null && (!data.exists() || data.child('host').val() === auth.uid)",
+        ".validate": "newData.child('host').val() === auth.uid"
+      }
+    },
+    "answers": {
+      "$code": {
+        ".read": "auth != null && root.child('sessions/' + $code + '/host').val() === auth.uid",
+        ".write": "auth != null && root.child('sessions/' + $code + '/host').val() === auth.uid",
+        "$key": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('sessions/' + $code).exists()"
+          }
+        }
+      }
+    },
+    "presence": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('sessions/' + $code + '/host').val() === auth.uid",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    }
+  }
+}

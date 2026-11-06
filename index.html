@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cours UE2 · formaScience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>
+body{font-size:15px;min-height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);background:var(--surface)}
+header img{height:24px;width:auto}
+header span{font-size:12px;color:var(--muted)}
+main{flex:1;width:100%;max-width:520px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--honey);font-weight:600}
+.q{font-weight:600;font-size:16px;line-height:1.35;margin:0}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;padding:11px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px;line-height:1.35}
+.opt .l{flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid var(--sage);display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--sage-ink)}
+.opt.sel{border-color:var(--plum);background:var(--plum-soft)}
+.opt.sel .l{background:var(--btn);border-color:var(--btn);color:#fff}
+.opt.good{border-color:var(--ok);background:var(--ok-soft)} .opt.bad{border-color:var(--ko);background:var(--ko-soft)}
+.send{width:100%;padding:14px;border:0;border-radius:14px;background:var(--btn);color:#fff;font-weight:600;font-size:16px;margin-top:4px}
+.input{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit;font-size:16px}
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;color:var(--muted);padding:40px 10px}
+.done .big{font-size:40px;line-height:1;color:var(--sage-ink)}
+.done b{color:var(--ink);font-size:17px}
+.fb{font-size:14px;padding:10px 12px;border-radius:12px}
+.fb.good{background:var(--ok-soft);color:var(--ok)} .fb.bad{background:var(--ko-soft);color:var(--ko)}
+.ordr{display:flex;align-items:center;gap:8px;padding:9px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font-size:14px}
+.ordr .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--sage-soft);color:var(--sage-ink);font-weight:700;font-size:12px;display:grid;place-items:center}
+.ordr .tx{flex:1;min-width:0;line-height:1.3}
+.ordr .mv{display:flex;flex-direction:column;gap:3px}
+.ordr .mv button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;width:34px;height:26px;font-size:11px;padding:0}
+.ordr.good{border-color:var(--ok);background:var(--ok-soft)} .ordr.bad{border-color:var(--ko);background:var(--ko-soft)}
+.pair{display:flex;flex-direction:column;gap:5px;font-size:14px}
+.pair select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit;font-size:14px}
+.vf{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vf button{padding:28px 6px;border-radius:16px;border:0;font-weight:700;font-size:20px;color:#fff}
+.vf .v{background:#4f7a5a}.vf .f{background:#b5523b}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;color:var(--honey)}
+.err{color:var(--ko);font-size:14px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg2 button{padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}
+.seg2 button[data-v="A"].on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.seg2 button[data-v="R"].on{background:var(--ko-soft);border-color:var(--ko);color:var(--ko)}
+.tbl{font-size:12px}
+</style>
+</head>
+<body>
+<div id="banner"></div>
+<header><img src="img/logo.png" alt="formaScience"><span id="hd">Cours UE2</span></header>
+<main id="m"></main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="backend.js"></script>
+<script src="content.js"></script>
+<script src="shared.js"></script>
+<script>
+const B = window.Backend, C = window.COURSE, S = C.steps, M = document.getElementById('m');
+let code = null, uid = null, state = null, sig = '', tick = null, stopState = null;
+if (B.mode === 'demo') document.getElementById('banner').innerHTML = '<div class="demo-banner">Mode démo (sans Firebase)</div>';
+
+const LS = (() => { try { return B.mode === 'demo' ? sessionStorage : localStorage; } catch (e) { return null; } })();
+const store = {
+  get(k) { try { return JSON.parse(LS.getItem(`mine:${code}:${k}`)); } catch (e) { return null; } },
+  set(k, v) { try { LS.setItem(`mine:${code}:${k}`, JSON.stringify(v)); } catch (e) {} },
+};
+const pseudo = { get() { try { return LS.getItem('ue2-pseudo') || ''; } catch (e) { return ''; } }, set(v) { try { LS.setItem('ue2-pseudo', v); } catch (e) {} } };
+async function send(k, v) { store.set(k, v); try { await B.submit(code, k, v); } catch (e) { M.insertAdjacentHTML('afterbegin', `<p class="err">Réponse non envoyée (${esc(e.code || e.message)}). Vérifie ta connexion.</p>`); } sig = ''; render(); }
+const doneScreen = (t = 'Réponse envoyée', sub = "Regarde l'écran") => `<div class="done"><div class="big">✓</div><b>${esc(t)}</b><span>${esc(sub)}</span></div>`;
+
+/* ---------- Connexion ---------- */
+function askCode(msg) {
+  M.innerHTML = `<p class="q">Rejoindre le cours</p>${msg ? `<p class="err">${esc(msg)}</p>` : ''}<label class="hint" for="c">Code affiché à l'écran</label>
+  <input id="c" class="input" maxlength="8" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.15em;font-weight:600"><button class="send" id="go">Rejoindre</button>`;
+  const go = () => { const v = document.getElementById('c').value.trim().toUpperCase(); if (v) connect(v); };
+  document.getElementById('go').onclick = go;
+  document.getElementById('c').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+}
+async function connect(c) {
+  code = c; M.innerHTML = '<div class="done"><b>Connexion…</b></div>';
+  try { uid = await B.init(); } catch (e) { askCode('Connexion impossible. Réessaie dans un instant.'); return; }
+  let first = true;
+  stopState = B.onState(code, (s) => {
+    if (!s) { if (first) { stopState && stopState(); askCode('Ce code ne correspond à aucune séance en cours.'); } else { M.innerHTML = doneScreen('Séance terminée', 'Merci et bonnes révisions !'); clearInterval(tick); } first = false; return; }
+    state = s;
+    if (first) { first = false; B.join(code); try { history.replaceState(null, '', '?c=' + code); } catch (e) {} }
+    render();
+  });
+}
+
+/* ---------- Affichage ---------- */
+function render() {
+  if (!state) return;
+  const st = S[state.step]; if (!st) return;
+  const s2 = [state.step, state.phase, state.qi, state.until, state.sub, state.k].join('|');
+  if (s2 === sig) return; sig = s2;
+  clearInterval(tick); tick = null;
+  document.getElementById('hd').textContent = C.parts[st.part];
+  V[st.kind](st, 's' + state.step);
+}
+const V = {};
+V.join = () => { M.innerHTML = doneScreen('Tu es connecté·e', 'Les questions apparaîtront ici pendant le cours.'); };
+V.explain = (st) => {
+  const sl = st.slides[state.sub || 0], k = state.k || 0;
+  if (sl.anim) { const A = ANIMS[sl.anim]; M.innerHTML = `<span class="eyebrow">Suis l'animation</span><p class="q">${esc(sl.t)}</p>${A.draw(k)}<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div><p class="hint">Tourne ton téléphone pour agrandir le schéma.</p>`; return; }
+  if (sl.table) { M.innerHTML = `<span class="eyebrow">À connaître par cœur</span><p class="q">${esc(sl.t)}</p>${renderTable(sl.table)}${sl.memo ? `<div class="memo">${sl.memo.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : ''}`; return; }
+  M.innerHTML = `<div class="done"><div class="big">✎</div><b>Écoute</b><span>${esc(sl.t)}</span><span>Complète ton document étudiant : la prochaine question arrive.</span></div>`;
+};
+V.end = () => { M.innerHTML = doneScreen('Merci !', 'Révise avec ton document étudiant et la fiche de permanence du Ch5.'); };
+V.cloud = (st, k) => {
+  if (store.get(k)) { M.innerHTML = doneScreen('Mot envoyé', "Il apparaît dans le nuage à l'écran."); return; }
+  M.innerHTML = `<p class="q">${esc(st.title)}</p><p class="hint">Un ou deux mots, sans réfléchir.</p><input id="w" class="input" maxlength="28" placeholder="Ton mot"><button class="send" id="go" disabled>Envoyer</button>`;
+  const w = document.getElementById('w'), go = document.getElementById('go');
+  w.oninput = () => go.disabled = !w.value.trim(); go.onclick = () => send(k, { w: w.value.trim().slice(0, 28) });
+};
+V.poll = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = mine ? `<div class="fb ${mine.i === st.good ? 'good' : 'bad'}">${mine.i === st.good ? 'Bonne réponse' : 'Pas tout à fait'} : ${L[st.good]}. ${esc(st.opts[st.good])}</div><p class="hint">${esc(st.ex)}</p>` : `<p class="hint">${esc(st.ex)}</p>`; return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  let pick = -1;
+  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.svg ? CASE_SVG[st.svg]() : ''}${st.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { pick = +b.dataset.i; M.querySelectorAll('.opt').forEach((x) => x.classList.toggle('sel', x === b)); document.getElementById('go').disabled = false; });
+  document.getElementById('go').onclick = () => send(k, { i: pick });
+};
+V.tap = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { const ok = mine && inZone(st, mine); M.innerHTML = `${mine ? `<div class="fb ${ok ? 'good' : 'bad'}">${ok ? 'Bien placé' : 'À côté'}</div>` : ''}<p class="hint">${esc(st.ex)}</p>`; return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  let me = null;
+  M.innerHTML = `<p class="q">${esc(st.q)}</p><p class="hint">Touche le schéma, puis valide. Tu peux tourner ton téléphone pour l'agrandir.</p><div class="tapbox" id="tb"><img src="img/${st.img}.png" alt="Schéma à toucher"></div><button class="send" id="go" disabled>Valider</button>`;
+  const tb = document.getElementById('tb');
+  tb.onclick = (e) => { const r = tb.getBoundingClientRect(); me = { x: +((e.clientX - r.left) / r.width * 100).toFixed(1), y: +((e.clientY - r.top) / r.height * 100).toFixed(1) };
+    tb.querySelectorAll('.pin').forEach((p) => p.remove()); tb.insertAdjacentHTML('beforeend', `<span class="pin me" style="left:${me.x}%;top:${me.y}%"></span>`); document.getElementById('go').disabled = false; };
+  document.getElementById('go').onclick = () => send(k, me);
+};
+V.number = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = `${mine ? `<div class="fb ${mine.v === st.good ? 'good' : 'bad'}">Ta réponse : ${mine.v} · attendu : ${st.good}</div>` : ''}<p class="hint">${esc(st.ex)}</p>`; return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  M.innerHTML = `<p class="q">${esc(st.q)}</p><label class="hint" for="nb">Un nombre entier</label><input id="nb" class="input" type="number" inputmode="numeric"><button class="send" id="go" disabled>Envoyer</button>`;
+  const nb = document.getElementById('nb'), go = document.getElementById('go');
+  nb.oninput = () => go.disabled = nb.value === ''; go.onclick = () => send(k, { v: Math.round(+nb.value) });
+};
+V.match = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = st.pairs.map((p, i) => `<div class="fb ${mine && mine.a[i] === p[1] ? 'good' : 'bad'}"><b>${esc(p[0])}</b> → ${esc(p[1])}</div>`).join('') + (mine ? `<p class="hint">${mine.a.filter((x, i) => x === st.pairs[i][1]).length} / ${st.pairs.length} associations justes</p>` : ''); return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  const rights = st.pairs.map((p) => p[1]), sh = rights.map((_, i) => rights[(i + 1) % rights.length]);
+  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.pairs.map((p, i) => `<div class="pair"><label for="m${i}"><b>${esc(p[0])}</b></label><select id="m${i}"><option value="">Choisir…</option>${sh.map((r) => `<option>${esc(r)}</option>`).join('')}</select></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  const sels = [...M.querySelectorAll('select')], go = document.getElementById('go');
+  sels.forEach((x) => x.onchange = () => go.disabled = sels.some((y) => !y.value));
+  go.onclick = () => send(k, { a: sels.map((x) => x.value) });
+};
+V.order = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = `<p class="q">Le bon ordre</p>` + st.items.map((t, i) => `<div class="ordr ${mine ? (mine.o[i] === i ? 'good' : 'bad') : ''}"><span class="n">${i + 1}</span><span class="tx">${esc(t)}</span></div>`).join('') + (mine ? `<p class="hint">Tu avais ${mine.o.filter((x, i) => x === i).length} / ${st.items.length} étapes à la bonne place.</p>` : ''); return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  const ord = [...st.start];
+  const draw = () => {
+    M.innerHTML = `<p class="q">${esc(st.q)}</p><p class="hint">Utilise les flèches pour déplacer.</p>${ord.map((x, i) => `<div class="ordr"><span class="n">${i + 1}</span><span class="tx">${esc(st.items[x])}</span><span class="mv"><button data-u="${i}" aria-label="Monter" ${i === 0 ? 'disabled' : ''}>▲</button><button data-d="${i}" aria-label="Descendre" ${i === ord.length - 1 ? 'disabled' : ''}>▼</button></span></div>`).join('')}<button class="send" id="go">Envoyer</button>`;
+    M.querySelectorAll('[data-u]').forEach((b) => b.onclick = () => { const i = +b.dataset.u; [ord[i - 1], ord[i]] = [ord[i], ord[i - 1]]; draw(); });
+    M.querySelectorAll('[data-d]').forEach((b) => b.onclick = () => { const i = +b.dataset.d; [ord[i + 1], ord[i]] = [ord[i], ord[i + 1]]; draw(); });
+    document.getElementById('go').onclick = () => send(k, { o: ord });
+  };
+  draw();
+};
+V.classify = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') {
+    M.innerHTML = `<p class="q">Correction</p>` + st.items.map(([t, a], i) => { const ok = mine && mine.c[i] === a; return `<div class="fb ${mine ? (ok ? 'good' : 'bad') : ''}"><b>${esc(t)}</b> → ${a === 'A' ? 'active' : 'réprime'}${mine && !ok ? ' (tu avais mis l\'inverse)' : ''}</div>`; }).join('') + (mine ? `<p class="hint">${mine.c.filter((x, i) => x === st.items[i][1]).length} / ${st.items.length} justes</p>` : '');
+    return;
+  }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponses envoyées' : 'Réponses fermées'); return; }
+  const c = st.items.map(() => null);
+  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.items.map(([t], i) => `<div class="pair"><b>${esc(t)}</b><div class="seg2" data-i="${i}"><button data-v="A">Active</button><button data-v="R">Réprime</button></div></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  M.querySelectorAll('.seg2').forEach((g2) => g2.querySelectorAll('button').forEach((b) => b.onclick = () => { c[+g2.dataset.i] = b.dataset.v; g2.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); document.getElementById('go').disabled = c.some((x) => !x); }));
+  document.getElementById('go').onclick = () => send(k, { c });
+};
+V.peer = (st, k) => {
+  const ph = state.phase, r = ph === 'r1' ? 'r1' : 'r2';
+  const m1 = store.get(k + 'r1'), m2 = store.get(k + 'r2');
+  const opts = (set, rev) => st.items.map((t, i) => { const g = st.ok.includes(L[i]); return `<button class="opt ${set.has(i) ? 'sel' : ''} ${rev ? (g ? 'good' : set.has(i) ? 'bad' : '') : ''}" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(t)}</span></button>`; }).join('');
+  const vote = (label, key, init) => {
+    const set = new Set(init);
+    M.innerHTML = `<span class="eyebrow">${label}</span><p class="q">${esc(st.q)}</p><p class="hint">Plusieurs réponses possibles.</p>${opts(set, false)}<button class="send" id="go">Envoyer</button>`;
+    M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { const i = +b.dataset.i; set.has(i) ? set.delete(i) : set.add(i); b.classList.toggle('sel'); });
+    document.getElementById('go').onclick = () => send(key, { s: [...set].sort().map((i) => L[i]).join('') });
+  };
+  const toSet = (m) => m ? m.s.split('').map((c) => L.indexOf(c)) : [];
+  if (ph === 'r1') { if (m1) M.innerHTML = doneScreen('1er vote envoyé', 'Attends la consigne.'); else vote('1er vote', k + 'r1', []); return; }
+  if (ph === 'r1res') { M.innerHTML = doneScreen(m1 ? '1er vote envoyé' : 'Vote fermé', "Regarde la répartition à l'écran."); return; }
+  if (ph === 'disc') {
+    M.innerHTML = `<div class="done"><div class="big">⇄</div><b>Discute avec ton voisin</b><span>Trouve quelqu'un qui n'a pas voté comme toi.</span><span class="timer" id="tm" style="font-size:28px"></span></div>`;
+    const up = () => { const t = Math.max(0, Math.round((state.until - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+    up(); tick = setInterval(up, 500); return;
+  }
+  if (ph === 'r2') { if (m2) M.innerHTML = doneScreen('2e vote envoyé'); else vote('2e vote · tu peux changer d\'avis', k + 'r2', toSet(m1)); return; }
+  if (ph === 'r2res') { M.innerHTML = doneScreen(m2 ? '2e vote envoyé' : 'Vote fermé'); return; }
+  const mine = m2 || m1, s = toSet(mine), got = mine ? mine.s : '';
+  M.innerHTML = `<div class="fb ${got === st.ok ? 'good' : 'bad'}">Ta réponse : ${got || 'aucune'} · attendu : ${st.ok}</div>${opts(new Set(s), true)}<p class="hint">${st.ex.map((e, i) => `<b>${L[i]}.</b> ${esc(e)}`).join('<br>')}</p>`;
+};
+V.quiz = (st, k) => {
+  const ph = state.phase, qi = state.qi || 0;
+  const score = () => st.qs.reduce((a, q, i) => { const m = store.get(k + 'q' + i); return a + (m && m.a === q[1] ? 500 + Math.round(500 * Math.max(0, 1 - m.ms / (st.seconds * 1000))) : 0); }, 0);
+  if (ph === 'intro') {
+    M.innerHTML = `<p class="q">Quiz final</p><p class="hint">Choisis un pseudo pour le classement (gardé seulement pendant la séance).</p><input id="ps" class="input" maxlength="16" value="${esc(pseudo.get() || 'Étudiant·e ' + Math.floor(10 + Math.random() * 89))}"><button class="send" id="ok">C'est mon pseudo</button><p class="hint" id="okm"></p>`;
+    document.getElementById('ok').onclick = () => { pseudo.set(document.getElementById('ps').value.trim().slice(0, 16) || 'Anonyme'); document.getElementById('okm').textContent = 'Enregistré. Attends la première question.'; };
+    return;
+  }
+  const [txt, good] = st.qs[qi], key = k + 'q' + qi, mine = store.get(key);
+  if (ph === 'q') {
+    if (mine) { M.innerHTML = doneScreen('Réponse enregistrée', 'Attends la correction.'); return; }
+    M.innerHTML = `<span class="eyebrow">Question ${qi + 1} / ${st.qs.length} · <span class="timer" id="tm"></span> s</span><p class="q" style="font-size:18px">${esc(txt)}</p><div class="vf"><button class="v" data-a="1">Vrai</button><button class="f" data-a="0">Faux</button></div>`;
+    const left = () => state.qStart + st.seconds * 1000 - B.now();
+    const up = () => { const t = Math.max(0, Math.ceil(left() / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = t; if (t <= 0) { clearInterval(tick); M.innerHTML = doneScreen('Temps écoulé', 'Attends la correction.'); } };
+    up(); tick = setInterval(up, 250);
+    M.querySelectorAll('.vf button').forEach((b) => b.onclick = () => { if (left() <= 0) return; send(key, { a: b.dataset.a === '1', ms: Math.max(0, B.now() - state.qStart), n: pseudo.get() || 'Anonyme' }); });
+    return;
+  }
+  if (ph === 'qres') { M.innerHTML = `<div class="fb ${mine && mine.a === good ? 'good' : 'bad'}">${!mine ? 'Pas de réponse' : mine.a === good ? 'Juste' : 'Faux'} · la réponse était « ${good ? 'vrai' : 'faux'} »</div><p class="hint">Ton score : <b>${score()}</b> points</p>`; return; }
+  const rank = (state.board || []).findIndex((x) => x[2] === uid);
+  M.innerHTML = doneScreen(`${score()} points`, rank >= 0 ? `Tu es ${rank + 1}${rank ? 'e' : 'er'} au classement !` : "Regarde le classement à l'écran.");
+};
+
+const c0 = new URLSearchParams(location.search).get('c');
+if (c0) connect(c0.toUpperCase()); else askCode();
+</script>
+</body>
+</html>
