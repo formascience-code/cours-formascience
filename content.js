@@ -131,7 +131,7 @@ window.COURSE = {
           notes: ["Fais le lien avec l'animation : niveau 4."] },
       ] },
     { part: 4, kind: 'tap', min: 2, title: 'Schéma à compléter',
-      q: "Touche l'histone qui ne fait pas partie de l'octamère.", img: 'nucleosome', zone: [26.3, 72, 31.2, 99],
+      q: "Touche l'histone qui ne fait pas partie de l'octamère.", img: 'nucleosome', zone: [40.2, 70.5, 48, 99],
       ex: "C'est H1, le « verrou » : elle stabilise l'ADN à l'extérieur de l'octamère.",
       notes: ["Question rapide : 30 secondes, carte des clics, une phrase de correction."] },
     { part: 4, kind: 'number', min: 2, title: 'Un chiffre à retenir',
