@@ -50,6 +50,9 @@ footer .info{color:var(--muted);font-variant-numeric:tabular-nums}
 .start button{align-self:flex-start;border:0;border-radius:.6rem;padding:.7rem 1.3rem;font-size:1rem;background:var(--btn);color:#fff;font-weight:600}
 .start .alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .err{color:var(--ko)}
+.crs{display:flex;flex-direction:column;gap:.15rem;padding:.8rem 1rem;border:1px solid var(--line);border-radius:.7rem;background:var(--surface);color:var(--ink);text-decoration:none}
+.crs:hover{border-color:var(--sage)}
+.crs span{font-size:.8rem;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -62,10 +65,10 @@ footer .info{color:var(--muted);font-variant-numeric:tabular-nums}
 <script src="qrcode.js"></script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
-<script src="content.js"></script>
+<script src="catalogue.js"></script>
 <script src="shared.js"></script>
 <script>
-const B = window.Backend, C = window.COURSE, S = C.steps;
+const B = window.Backend; let C = null, S = null;
 const app = document.getElementById('app');
 let code = null, state = null, uid = null, showNotes = false, count = 0;
 const ans = {}, subs = {};
@@ -79,7 +82,7 @@ function initPhase(k) { return k === 'peer' ? 'r1' : k === 'quiz' ? 'intro' : 'o
 /* ---------- Démarrage ---------- */
 async function boot() {
   try { uid = await B.init(); } catch (e) { app.innerHTML = `<div class="start"><p class="err">Connexion impossible : ${esc(e.message || e)}. Vérifie config.js et la connexion anonyme dans Firebase.</p></div>`; return; }
-  let prev = null; try { prev = localStorage.getItem('ue2-prof-code'); } catch (e) {}
+  let prev = null; try { prev = localStorage.getItem('prof-code-' + COURSE_ID); } catch (e) {}
   if (prev && (await B.sessionHost(prev)) !== uid) prev = null;
   app.innerHTML = `<div class="start"><img src="img/logo.png" alt="formaScience"><h1 class="title">${esc(C.title)}</h1><p>${esc(C.subtitle)} · ${S.length} étapes · ${S.reduce((a, s) => a + s.min, 0)} min</p>
     <button id="new">Démarrer une nouvelle séance</button>${prev ? `<button class="alt" id="resume">Reprendre la séance ${prev}</button>` : ''}
@@ -87,12 +90,12 @@ async function boot() {
   document.getElementById('new').onclick = async () => {
     if (prev) await B.clear(prev);
     code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
-    await B.createSession(code); start();
+    await B.createSession(code); await B.setState(code, { cours: COURSE_ID }); start();
   };
   if (prev) document.getElementById('resume').onclick = () => { code = prev; start(); };
 }
 function start() {
-  try { localStorage.setItem('ue2-prof-code', code); } catch (e) {}
+  try { localStorage.setItem('prof-code-' + COURSE_ID, code); } catch (e) {}
   app.innerHTML = `<nav class="rail" id="rail"></nav><main id="main"></main><div class="notes" id="notes" hidden></div>
   <footer><button id="prev">← Étape précédente</button><button class="primary" id="act"></button><button id="next">Étape suivante →</button>
   <span class="info" id="info"></span><span class="sp"></span><span class="info">Séance <b>${code}</b> · <span id="cnt">0</span> connectés</span>
@@ -113,7 +116,7 @@ function start() {
 function toggleNotes() { showNotes = !showNotes; render(); }
 function stopAsk() {
   const b = document.getElementById('stop');
-  if (b.dataset.armed) { B.clear(code).then(() => { try { localStorage.removeItem('ue2-prof-code'); } catch (e) {} ended(); }); return; }
+  if (b.dataset.armed) { B.clear(code).then(() => { try { localStorage.removeItem('prof-code-' + COURSE_ID); } catch (e) {} ended(); }); return; }
   b.dataset.armed = '1'; b.textContent = 'Confirmer : tout effacer'; b.style.borderColor = 'var(--ko)'; b.style.color = 'var(--ko)';
   setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Terminer la séance'; b.style = ''; } }, 4000);
 }
@@ -196,7 +199,7 @@ R.explain = (st, m) => {
   } else if (sl.table) {
     body = `${renderTable(sl.table)}${sl.memo ? `<div class="memo">${sl.memo.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : ''}`;
   } else {
-    body = `<div class="slide ${sl.img ? '' : 'solo'}"><ul class="pts">${sl.pts.map((p) => `<li>${p}</li>`).join('')}</ul>${sl.img ? `<img class="fig" src="img/${sl.img}.png" alt="Schéma">` : ''}</div>`;
+    body = `<div class="slide ${sl.img ? '' : 'solo'}"><ul class="pts">${sl.pts.map((p) => `<li>${p}</li>`).join('')}</ul>${sl.img ? `<img class="fig" src="${IMGBASE}${sl.img}.png" alt="Schéma">` : ''}</div>`;
   }
   m.innerHTML = `<span class="eyebrow">${esc(C.parts[st.part])} · ${pos}</span><h1 class="title">${esc(sl.t)}</h1>${body}`;
   if (sl.anim && k < ANIMS[sl.anim].caps.length - 1) return ['Animation : étape suivante', () => set({ k: k + 1 })];
@@ -213,7 +216,7 @@ R.cloud = (st, m) => {
 R.poll = (st, m) => {
   const k = 's' + state.step, v = vals(k), ph = state.phase, cnt = st.opts.map((_, i) => v.filter((x) => x.i === i).length), tot = Math.max(1, v.length);
   let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
-  const fig = st.svg ? `<div style="max-width:min(100%,calc((100vh - 22rem) * 3.1))">${CASE_SVG[st.svg]()}</div>` : st.img ? `<img class="fig" src="img/${st.img}.png" alt="" style="max-width:40rem">` : '';
+  const fig = st.svg ? `<div style="max-width:min(100%,calc((100vh - 22rem) * 3.1))">${CASE_SVG[st.svg]()}</div>` : st.img ? `<img class="fig" src="${IMGBASE}${st.img}.png" alt="" style="max-width:40rem">` : '';
   if (ph === 'open') { m.innerHTML = h + fig + nAns(k); return ['Afficher les résultats', () => set({ phase: 'results' })]; }
   h += `<div class="bars">${st.opts.map((o, i) => { const p = Math.round(cnt[i] / tot * 100); return `<div class="bar ${ph === 'reveal' && i === st.good ? 'good' : ''}"><span class="k">${L[i]}</span><div><div class="txt">${esc(o)}</div><div class="track"><div class="fill" style="width:${p}%"></div></div></div><span class="pct">${p} %</span></div>`; }).join('')}</div>${nAns(k)}`;
   if (ph === 'results') { m.innerHTML = h; return ['Afficher la réponse', () => set({ phase: 'reveal' })]; }
@@ -224,7 +227,7 @@ R.tap = (st, m) => {
   const pins = ph === 'open' ? '' : v.map((p) => `<span class="pin" style="left:${p.x}%;top:${p.y}%"></span>`).join('');
   const zone = ph === 'reveal' ? `<div class="zone" style="left:${x1}%;top:${y1}%;width:${x2 - x1}%;height:${y2 - y1}%"></div>` : '';
   const ok = v.filter((p) => inZone(st, p)).length;
-  m.innerHTML = `${head(st)}<p class="q">${esc(st.q)}</p><div class="tapbox" style="max-width:62rem"><img src="img/${st.img}.png" alt="Schéma">${pins}${zone}</div>${nAns(k)}${ph === 'reveal' ? `<p class="correction"><b>Correction.</b> ${esc(st.ex)} <b>${pct(ok, v.length)} %</b> ont touché la bonne zone.</p>` : ''}`;
+  m.innerHTML = `${head(st)}<p class="q">${esc(st.q)}</p><div class="tapbox" style="max-width:62rem"><img src="${IMGBASE}${st.img}.png" alt="Schéma">${pins}${zone}</div>${nAns(k)}${ph === 'reveal' ? `<p class="correction"><b>Correction.</b> ${esc(st.ex)} <b>${pct(ok, v.length)} %</b> ont touché la bonne zone.</p>` : ''}`;
   if (ph === 'open') return ['Afficher les clics', () => set({ phase: 'results' })];
   if (ph === 'results') return ['Afficher la zone juste', () => set({ phase: 'reveal' })];
   return null;
@@ -327,7 +330,17 @@ R.end = (st, m) => {
   });
   return null;
 };
-boot();
+(function () {
+  const id = new URLSearchParams(location.search).get('cours');
+  const cat = window.CATALOGUE || [];
+  if (!id && cat.length > 1) {
+    app.innerHTML = `<div class="start"><img src="img/logo.png" alt="formaScience"><h1 class="title">Mes cours interactifs</h1><p class="wait">Choisis le cours à lancer.</p>
+      <div style="display:flex;flex-direction:column;gap:.6rem">${cat.map((c) => `<a class="crs" href="?cours=${encodeURIComponent(c.id)}"><b>${esc(c.titre)}</b><span>${esc(c.sous_titre || '')}</span></a>`).join('')}</div></div>`;
+    return;
+  }
+  loadCourse(id || (cat[0] && cat[0].id) || DEFAULT_COURSE).then((c) => { C = c; S = c.steps; document.title = 'Écran prof · ' + c.title; boot(); })
+    .catch((e) => { app.innerHTML = `<div class="start"><h1 class="title">Cours introuvable</h1><p class="err">${esc(e.message)}</p><p><a href="prof.html">Revenir à la liste des cours</a></p></div>`; });
+})();
 </script>
 </body>
 </html>

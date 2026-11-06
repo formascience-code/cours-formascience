@@ -62,9 +62,25 @@ Ces clés ne sont pas des mots de passe : elles peuvent être publiques. La séc
 
 **À tester avant le premier cours** : fais un essai dans l'amphi avec 2 ou 3 téléphones, sur le wifi de la fac et en 4G. L'offre gratuite de Firebase accepte, à ma connaissance, 100 connexions simultanées : c'est largement suffisant pour une classe de 34, mais à vérifier pour un grand amphi.
 
+## Plusieurs cours sur le même site
+
+Chaque cours a son dossier dans `cours/` :
+
+```
+cours/
+├── ue2-ch5/          ← content.js + img/ (schémas du cours)
+└── ue2-ch6/          ← un nouveau dossier par cours
+```
+
+- **Liste des cours** : `prof.html` sans rien derrière affiche la liste (fichier `catalogue.js`).
+- **Lien direct vers un cours** : `prof.html?cours=ue2-ch5`.
+- **Ajouter un cours** : déposer son dossier dans `cours/` (Add file › Upload files, en glissant le dossier), puis ajouter une ligne dans `catalogue.js` (icône crayon sur GitHub).
+- Le moteur (`prof.html`, `index.html`, `shared.js`, `backend.js`, `app.css`) est commun : une amélioration profite à tous les cours.
+- La base Firebase est la même pour tous les cours.
+
 ## Modifier le cours
 
-Tout le contenu est dans **`content.js`** : titres, questions, propositions, bonnes réponses, explications, notes du prof et durées. Tu peux changer un texte directement sur GitHub (icône crayon), puis « Commit » ; le site se met à jour en une minute.
+Tout le contenu d'un cours est dans **`cours/<nom-du-cours>/content.js`** : titres, questions, propositions, bonnes réponses, explications, notes du prof et durées. Tu peux changer un texte directement sur GitHub (icône crayon), puis « Commit » ; le site se met à jour en une minute.
 
 | Type d'étape | Ce que voient les étudiants |
 |---|---|
@@ -81,4 +97,4 @@ Tout le contenu est dans **`content.js`** : titres, questions, propositions, bon
 | `quiz` | Vrai / faux chronométré avec classement |
 | `end` | Bilan de la séance |
 
-`qrcode.js` (licence MIT, Kazuhiko Arase) fabrique le QR code ; ne le supprime pas. Les schémas sont dans `img/` (issus des fiches Ch5 de la Ruche). Pour un autre chapitre, il suffit de dupliquer le dossier et de réécrire `content.js`.
+`qrcode.js` (licence MIT, Kazuhiko Arase) fabrique le QR code ; ne le supprime pas. Les schémas d'un cours sont dans `cours/<nom-du-cours>/img/` ; `img/` à la racine ne contient que le logo (issus des fiches Ch5 de la Ruche). 

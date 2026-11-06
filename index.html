@@ -58,10 +58,9 @@ main{flex:1;width:100%;max-width:520px;margin:0 auto;padding:16px max(16px,env(s
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="config.js"></script>
 <script src="backend.js"></script>
-<script src="content.js"></script>
 <script src="shared.js"></script>
 <script>
-const B = window.Backend, C = window.COURSE, S = C.steps, M = document.getElementById('m');
+const B = window.Backend, M = document.getElementById('m'); let C = null, S = null, loading = false;
 let code = null, uid = null, state = null, sig = '', tick = null, stopState = null;
 if (B.mode === 'demo') document.getElementById('banner').innerHTML = '<div class="demo-banner">Mode démo (sans Firebase)</div>';
 
@@ -90,13 +89,19 @@ async function connect(c) {
     if (!s) { if (first) { stopState && stopState(); askCode('Ce code ne correspond à aucune séance en cours.'); } else { M.innerHTML = doneScreen('Séance terminée', 'Merci et bonnes révisions !'); clearInterval(tick); } first = false; return; }
     state = s;
     if (first) { first = false; B.join(code); try { history.replaceState(null, '', '?c=' + code); } catch (e) {} }
+    if (!C) {
+      if (loading) return; loading = true;
+      loadCourse(s.cours || DEFAULT_COURSE).then((c) => { C = c; S = c.steps; sig = ''; render(); })
+        .catch((e) => { M.innerHTML = `<p class="err">Impossible de charger le cours (${esc(e.message)}).</p>`; });
+      return;
+    }
     render();
   });
 }
 
 /* ---------- Affichage ---------- */
 function render() {
-  if (!state) return;
+  if (!state || !S) return;
   const st = S[state.step]; if (!st) return;
   const s2 = [state.step, state.phase, state.qi, state.until, state.sub, state.k].join('|');
   if (s2 === sig) return; sig = s2;
@@ -133,7 +138,7 @@ V.tap = (st, k) => {
   if (ph === 'reveal') { const ok = mine && inZone(st, mine); M.innerHTML = `${mine ? `<div class="fb ${ok ? 'good' : 'bad'}">${ok ? 'Bien placé' : 'À côté'}</div>` : ''}<p class="hint">${esc(st.ex)}</p>`; return; }
   if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
   let me = null;
-  M.innerHTML = `<p class="q">${esc(st.q)}</p><p class="hint">Touche le schéma, puis valide. Tu peux tourner ton téléphone pour l'agrandir.</p><div class="tapbox" id="tb"><img src="img/${st.img}.png" alt="Schéma à toucher"></div><button class="send" id="go" disabled>Valider</button>`;
+  M.innerHTML = `<p class="q">${esc(st.q)}</p><p class="hint">Touche le schéma, puis valide. Tu peux tourner ton téléphone pour l'agrandir.</p><div class="tapbox" id="tb"><img src="${IMGBASE}${st.img}.png" alt="Schéma à toucher"></div><button class="send" id="go" disabled>Valider</button>`;
   const tb = document.getElementById('tb');
   tb.onclick = (e) => { const r = tb.getBoundingClientRect(); me = { x: +((e.clientX - r.left) / r.width * 100).toFixed(1), y: +((e.clientY - r.top) / r.height * 100).toFixed(1) };
     tb.querySelectorAll('.pin').forEach((p) => p.remove()); tb.insertAdjacentHTML('beforeend', `<span class="pin me" style="left:${me.x}%;top:${me.y}%"></span>`); document.getElementById('go').disabled = false; };

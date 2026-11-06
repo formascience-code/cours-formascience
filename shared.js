@@ -1,5 +1,19 @@
 /* Fonctions communes aux deux écrans : utilitaires, animations (SVG), tableaux */
 const L = 'ABCDE';
+/* Chargement d'un cours : cours/<id>/content.js et ses images cours/<id>/img/ */
+const DEFAULT_COURSE = 'ue2-ch5';
+let COURSE_ID = null, IMGBASE = 'img/';
+function loadCourse(id) {
+  return new Promise((ok, ko) => {
+    if (!/^[a-z0-9][a-z0-9-]{0,40}$/.test(id || '')) return ko(new Error('nom de cours invalide'));
+    window.COURSE = null;
+    const s = document.createElement('script');
+    s.src = `cours/${id}/content.js?v=${Date.now()}`;
+    s.onload = () => { if (!window.COURSE) return ko(new Error('le fichier content.js du cours est vide')); COURSE_ID = id; IMGBASE = `cours/${id}/img/`; ok(window.COURSE); };
+    s.onerror = () => ko(new Error(`cours introuvable : cours/${id}/content.js`));
+    document.head.appendChild(s);
+  });
+}
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 const inZone = (st, p) => { const [x1, y1, x2, y2] = st.zone; return p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2; };
