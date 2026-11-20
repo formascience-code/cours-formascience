@@ -480,7 +480,11 @@ R.teams = (st, m) => {
   const k = 's' + state.step, v = vals(k), cnt = {};
   v.forEach((x) => { if (x.t) cnt[x.t] = (cnt[x.t] || 0) + 1; });
   const taken = Object.keys(cnt).sort();
-  if (JSON.stringify(taken) !== JSON.stringify(state.taken || [])) set({ taken });
+  /* mise à jour des équipes prises, hors du rendu (évite les écritures imbriquées) */
+  if (JSON.stringify(taken) !== JSON.stringify(state.taken || []) && !R.teams.busy) {
+    R.teams.busy = true;
+    setTimeout(() => { R.teams.busy = false; const now = [...new Set(vals(k).map((x) => x.t).filter(Boolean))].sort(); if (JSON.stringify(now) !== JSON.stringify(state.taken || [])) set({ taken: now }); }, 80);
+  }
   m.innerHTML = `${head(st)}<p class="q">${esc(st.q)} : <b>un seul téléphone par équipe</b>, qui répondra pendant tout le TD.</p>
     <div class="tgrid">${(C.teams || []).map((t) => `<div class="tcard ${cnt[t.id] ? 'on' : ''}" style="--c:${t.c}"><b>${esc(t.n)}</b><span>${cnt[t.id] ? (cnt[t.id] > 1 ? `${cnt[t.id]} téléphones !` : 'prête ✓') : 'en attente…'}</span></div>`).join('')}</div>
     <p class="wait">${taken.length} / ${(C.teams || []).length} équipes inscrites · ${st.rules || ''}</p>`;

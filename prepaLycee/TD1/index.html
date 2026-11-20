@@ -358,6 +358,9 @@ function teamPicker(title, done) {
 V.teams = (st, k) => {
   const t = myTeam();
   if (!t) { teamPicker(st.q, () => send(k, { ok: 1 })); return; }
+  /* l'inscription est renvoyée à chaque affichage : si un premier envoi s'est perdu, il est rattrapé */
+  if (!store.get(k)) { send(k, { ok: 1 }); return; }
+  B.submit(code, k, { ok: 1, t: t.id, n: t.n }).catch(() => {});
   M.innerHTML = `<div class="done"><div class="big" style="color:${t.c}">●</div><b>${esc(t.n)}</b><span>Votre équipe est inscrite. Gardez ce téléphone pour tout le TD : il répondra pour toute l'équipe.</span><button class="opt" id="chg" style="justify-content:center;margin-top:14px">Changer d'équipe</button></div>`;
   document.getElementById('chg').onclick = () => { store.set('team', null); V.teams(st, k); };
 };
