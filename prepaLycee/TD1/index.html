@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cours UE2 · formaScience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>
+body{font-size:15px;min-height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);background:var(--surface)}
+header img{height:24px;width:auto}
+header span{font-size:12px;color:var(--muted)}
+main{flex:1;width:100%;max-width:520px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--honey);font-weight:600}
+.q{font-weight:600;font-size:16px;line-height:1.35;margin:0}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;padding:11px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px;line-height:1.35}
+.opt .l{flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid var(--sage);display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--sage-ink)}
+.opt.sel{border-color:var(--plum);background:var(--plum-soft)}
+.opt.sel .l{background:var(--btn);border-color:var(--btn);color:#fff}
+.opt.good{border-color:var(--ok);background:var(--ok-soft)} .opt.bad{border-color:var(--ko);background:var(--ko-soft)}
+.send{width:100%;padding:14px;border:0;border-radius:14px;background:var(--btn);color:#fff;font-weight:600;font-size:16px;margin-top:4px}
+.input{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit;font-size:16px}
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;color:var(--muted);padding:40px 10px}
+.done .big{font-size:40px;line-height:1;color:var(--sage-ink)}
+.done b{color:var(--ink);font-size:17px}
+.fb{font-size:14px;padding:10px 12px;border-radius:12px}
+.fb.good{background:var(--ok-soft);color:var(--ok)} .fb.bad{background:var(--ko-soft);color:var(--ko)}
+.ordr{display:flex;align-items:center;gap:8px;padding:9px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font-size:14px}
+.ordr .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--sage-soft);color:var(--sage-ink);font-weight:700;font-size:12px;display:grid;place-items:center}
+.ordr .tx{flex:1;min-width:0;line-height:1.3}
+.ordr .mv{display:flex;flex-direction:column;gap:3px}
+.ordr .mv button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;width:34px;height:26px;font-size:11px;padding:0}
+.ordr.good{border-color:var(--ok);background:var(--ok-soft)} .ordr.bad{border-color:var(--ko);background:var(--ko-soft)}
+.pair{display:flex;flex-direction:column;gap:5px;font-size:14px}
+.pair select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit;font-size:14px}
+.vf{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vf button{padding:28px 6px;border-radius:16px;border:0;font-weight:700;font-size:20px;color:#fff}
+.vf .v{background:#4f7a5a}.vf .f{background:#b5523b}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;color:var(--honey)}
+.err{color:var(--ko);font-size:14px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg2 button{padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}
+.seg2 button.c0.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.seg2 button.c1.on{background:var(--ko-soft);border-color:var(--ko);color:var(--ko)}
+.seg2.neu button.on{background:var(--plum-soft);border-color:var(--plum);color:var(--plum)}
+.dossier{background:var(--plum-soft);border-left:5px solid var(--nude);border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.45}
+.esc-top{display:flex;justify-content:space-between;align-items:center;border-left:6px solid var(--c);background:var(--surface);border-radius:10px;padding:8px 12px;font-size:14px}
+.esc-top span{color:var(--muted);font-size:13px}
+.esc-bar{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.word{display:flex;gap:4px;justify-content:center}
+.word span{width:26px;height:32px;border-bottom:3px solid var(--line);display:grid;place-items:center;font-weight:700;font-size:18px}
+.word span.on{border-color:var(--ok);color:var(--ok)}
+.tbl{font-size:12px}
+</style>
+</head>
+<body>
+<div id="banner"></div>
+<header><img src="img/logo.png" alt="formaScience"><span id="hd">Cours UE2</span></header>
+<main id="m"></main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="backend.js"></script>
+<script src="shared.js"></script>
+<script>
+const B = window.Backend, M = document.getElementById('m'); let C = null, S = null, loading = false;
+let code = null, uid = null, state = null, sig = '', tick = null, stopState = null;
+if (B.mode === 'demo') document.getElementById('banner').innerHTML = '<div class="demo-banner">Mode démo (sans Firebase)</div>';
+
+const LS = (() => { try { return B.mode === 'demo' ? sessionStorage : localStorage; } catch (e) { return null; } })();
+const store = {
+  get(k) { try { return JSON.parse(LS.getItem(`mine:${code}:${k}`)); } catch (e) { return null; } },
+  set(k, v) { try { LS.setItem(`mine:${code}:${k}`, JSON.stringify(v)); } catch (e) {} },
+};
+const pseudo = { get() { try { return LS.getItem('ue2-pseudo') || ''; } catch (e) { return ''; } }, set(v) { try { LS.setItem('ue2-pseudo', v); } catch (e) {} } };
+async function send(k, v) { const tm = myTeam(); if (tm && v && typeof v === 'object') v = Object.assign({}, v, { t: tm.id, n: tm.n }); store.set(k, v); try { await B.submit(code, k, v); } catch (e) { M.insertAdjacentHTML('afterbegin', `<p class="err">Réponse non envoyée (${esc(e.code || e.message)}). Vérifie ta connexion.</p>`); } sig = ''; render(); }
+const doneScreen = (t = 'Réponse envoyée', sub = "Regarde l'écran") => `<div class="done"><div class="big">✓</div><b>${esc(t)}</b><span>${esc(sub)}</span></div>`;
+
+/* ---------- Connexion ---------- */
+function askCode(msg) {
+  M.innerHTML = `<p class="q">Rejoindre le cours</p>${msg ? `<p class="err">${esc(msg)}</p>` : ''}<label class="hint" for="c">Code affiché à l'écran</label>
+  <input id="c" class="input" maxlength="8" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.15em;font-weight:600"><button class="send" id="go">Rejoindre</button>`;
+  const go = () => { const v = document.getElementById('c').value.trim().toUpperCase(); if (v) connect(v); };
+  document.getElementById('go').onclick = go;
+  document.getElementById('c').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+}
+async function connect(c) {
+  code = c; M.innerHTML = '<div class="done"><b>Connexion…</b></div>';
+  try { uid = await B.init(); } catch (e) { askCode('Connexion impossible. Réessaie dans un instant.'); return; }
+  let first = true;
+  stopState = B.onState(code, (s) => {
+    if (!s) { if (first) { stopState && stopState(); askCode('Ce code ne correspond à aucune séance en cours.'); } else { M.innerHTML = doneScreen('Séance terminée', 'Merci et bonnes révisions !'); clearInterval(tick); } first = false; return; }
+    state = s;
+    if (first) { first = false; B.join(code); try { history.replaceState(null, '', '?c=' + code); } catch (e) {} }
+    if (!C) {
+      if (loading) return; loading = true;
+      loadCourse(s.cours || DEFAULT_COURSE).then((c) => { C = c; S = c.steps; sig = ''; document.title = c.title + ' · formaScience'; render(); })
+        .catch((e) => { M.innerHTML = `<p class="err">Impossible de charger le cours (${esc(e.message)}).</p>`; });
+      return;
+    }
+    render();
+  });
+}
+
+/* ---------- Affichage ---------- */
+function render() {
+  if (!state || !S) return;
+  const st = S[state.step]; if (!st) return;
+  const s2 = [state.step, state.phase, state.qi, state.until, state.sub, state.k, (state.taken || []).join(','), JSON.stringify(state.board || '')].join('|');
+  if (s2 === sig) return; sig = s2;
+  clearInterval(tick); tick = null;
+  document.getElementById('hd').textContent = C.parts[st.part];
+  V[st.kind](st, 's' + state.step);
+}
+const V = {};
+V.join = () => { M.innerHTML = doneScreen('Tu es connecté·e', 'Les questions apparaîtront ici pendant le cours.'); };
+V.explain = (st) => {
+  const sl = st.slides[state.sub || 0], k = state.k || 0;
+  if (sl.anim) { const A = ANIMS[sl.anim]; M.innerHTML = `<span class="eyebrow">Suis l'animation</span><p class="q">${esc(sl.t)}</p>${A.draw(k)}<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div><p class="hint">Tourne ton téléphone pour agrandir le schéma.</p>`; return; }
+  if (sl.table) { M.innerHTML = `<span class="eyebrow">À connaître par cœur</span><p class="q">${esc(sl.t)}</p>${renderTable(sl.table)}${sl.memo ? `<div class="memo">${sl.memo.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : ''}`; return; }
+  M.innerHTML = `<div class="done"><div class="big">✎</div><b>Écoute</b><span>${esc(sl.t)}</span><span>${esc(C.listen || 'Complète ton document étudiant : la prochaine question arrive.')}</span></div>`;
+};
+V.end = () => { M.innerHTML = doneScreen('Merci !', C.bye || 'Révise avec ton document étudiant et la fiche de permanence du Ch5.'); };
+V.cloud = (st, k) => {
+  if (store.get(k)) { M.innerHTML = doneScreen('Mot envoyé', "Il apparaît dans le nuage à l'écran."); return; }
+  M.innerHTML = `<p class="q">${esc(st.title)}</p><p class="hint">Un ou deux mots, sans réfléchir.</p><input id="w" class="input" maxlength="28" placeholder="Ton mot"><button class="send" id="go" disabled>Envoyer</button>`;
+  const w = document.getElementById('w'), go = document.getElementById('go');
+  w.oninput = () => go.disabled = !w.value.trim(); go.onclick = () => send(k, { w: w.value.trim().slice(0, 28) });
+};
+V.poll = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = mine ? `<div class="fb ${mine.i === st.good ? 'good' : 'bad'}">${mine.i === st.good ? 'Bonne réponse' : 'Pas tout à fait'} : ${L[st.good]}. ${esc(st.opts[st.good])}</div><p class="hint">${esc(st.ex)}</p>` : `<p class="hint">${esc(st.ex)}</p>`; return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  let pick = -1;
+  M.innerHTML = `${st.ctx ? `<div class="dossier">${st.ctx}</div>` : ''}<p class="q">${esc(st.q)}</p>${st.svg ? CASE_SVG[st.svg]() : ''}${st.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { pick = +b.dataset.i; M.querySelectorAll('.opt').forEach((x) => x.classList.toggle('sel', x === b)); document.getElementById('go').disabled = false; });
+  document.getElementById('go').onclick = () => send(k, { i: pick });
+};
+V.tap = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { const ok = mine && inZone(st, mine); M.innerHTML = `${mine ? `<div class="fb ${ok ? 'good' : 'bad'}">${ok ? 'Bien placé' : 'À côté'}</div>` : ''}<p class="hint">${esc(st.ex)}</p>`; return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  let me = null;
+  M.innerHTML = `<p class="q">${esc(st.q)}</p><p class="hint">Touche le schéma, puis valide. Tu peux tourner ton téléphone pour l'agrandir.</p><div class="tapbox" id="tb"><img src="${IMGBASE}${st.img}.png" alt="Schéma à toucher"></div><button class="send" id="go" disabled>Valider</button>`;
+  const tb = document.getElementById('tb');
+  tb.onclick = (e) => { const r = tb.getBoundingClientRect(); me = { x: +((e.clientX - r.left) / r.width * 100).toFixed(1), y: +((e.clientY - r.top) / r.height * 100).toFixed(1) };
+    tb.querySelectorAll('.pin').forEach((p) => p.remove()); tb.insertAdjacentHTML('beforeend', `<span class="pin me" style="left:${me.x}%;top:${me.y}%"></span>`); document.getElementById('go').disabled = false; };
+  document.getElementById('go').onclick = () => send(k, me);
+};
+V.number = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = `${mine ? `<div class="fb ${mine.v === st.good ? 'good' : 'bad'}">Ta réponse : ${mine.v} · attendu : ${st.good}</div>` : ''}<p class="hint">${esc(st.ex)}</p>`; return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  M.innerHTML = `<p class="q">${esc(st.q)}</p><label class="hint" for="nb">Un nombre entier</label><input id="nb" class="input" type="number" inputmode="numeric"><button class="send" id="go" disabled>Envoyer</button>`;
+  const nb = document.getElementById('nb'), go = document.getElementById('go');
+  nb.oninput = () => go.disabled = nb.value === ''; go.onclick = () => send(k, { v: Math.round(+nb.value) });
+};
+V.match = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = st.pairs.map((p, i) => `<div class="fb ${mine && mine.a[i] === p[1] ? 'good' : 'bad'}"><b>${esc(p[0])}</b> → ${esc(p[1])}</div>`).join('') + (mine ? `<p class="hint">${mine.a.filter((x, i) => x === st.pairs[i][1]).length} / ${st.pairs.length} associations justes</p>` : ''); return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  const rights = st.pairs.map((p) => p[1]), sh = rights.map((_, i) => rights[(i + 1) % rights.length]);
+  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.pairs.map((p, i) => `<div class="pair"><label for="m${i}"><b>${esc(p[0])}</b></label><select id="m${i}"><option value="">Choisir…</option>${sh.map((r) => `<option>${esc(r)}</option>`).join('')}</select></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  const sels = [...M.querySelectorAll('select')], go = document.getElementById('go');
+  sels.forEach((x) => x.onchange = () => go.disabled = sels.some((y) => !y.value));
+  go.onclick = () => send(k, { a: sels.map((x) => x.value) });
+};
+V.order = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') { M.innerHTML = `<p class="q">Le bon ordre</p>` + st.items.map((t, i) => `<div class="ordr ${mine ? (mine.o[i] === i ? 'good' : 'bad') : ''}"><span class="n">${i + 1}</span><span class="tx">${esc(t)}</span></div>`).join('') + (mine ? `<p class="hint">Tu avais ${mine.o.filter((x, i) => x === i).length} / ${st.items.length} étapes à la bonne place.</p>` : ''); return; }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
+  const ord = [...st.start];
+  const draw = () => {
+    M.innerHTML = `<p class="q">${esc(st.q)}</p><p class="hint">Utilise les flèches pour déplacer.</p>${ord.map((x, i) => `<div class="ordr"><span class="n">${i + 1}</span><span class="tx">${esc(st.items[x])}</span><span class="mv"><button data-u="${i}" aria-label="Monter" ${i === 0 ? 'disabled' : ''}>▲</button><button data-d="${i}" aria-label="Descendre" ${i === ord.length - 1 ? 'disabled' : ''}>▼</button></span></div>`).join('')}<button class="send" id="go">Envoyer</button>`;
+    M.querySelectorAll('[data-u]').forEach((b) => b.onclick = () => { const i = +b.dataset.u; [ord[i - 1], ord[i]] = [ord[i], ord[i - 1]]; draw(); });
+    M.querySelectorAll('[data-d]').forEach((b) => b.onclick = () => { const i = +b.dataset.d; [ord[i + 1], ord[i]] = [ord[i], ord[i + 1]]; draw(); });
+    document.getElementById('go').onclick = () => send(k, { o: ord });
+  };
+  draw();
+};
+V.classify = (st, k) => {
+  const mine = store.get(k), ph = state.phase;
+  if (ph === 'reveal') {
+    const ch = choicesOf(st), lab = (a) => (ch.find((c) => c[0] === a) || [a, a])[1].toLowerCase();
+    M.innerHTML = `<p class="q">Correction</p>` + st.items.map(([t, a], i) => { const ok = mine && mine.c[i] === a; return `<div class="fb ${mine ? (ok ? 'good' : 'bad') : ''}"><b>${esc(t)}</b> → ${esc(lab(a))}${mine && !ok ? ` (tu avais mis : ${esc(lab(mine.c[i]))})` : ''}</div>`; }).join('') + (mine ? `<p class="hint">${mine.c.filter((x, i) => x === st.items[i][1]).length} / ${st.items.length} justes</p>` : '');
+    return;
+  }
+  if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponses envoyées' : 'Réponses fermées'); return; }
+  const c = st.items.map(() => null);
+  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.items.map(([t], i) => `<div class="pair"><b>${esc(t)}</b><div class="seg2 ${st.choices ? 'neu' : ''}" data-i="${i}">${choicesOf(st).map((c, j) => `<button data-v="${c[0]}" class="c${j}">${esc(c[1])}</button>`).join('')}</div></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  M.querySelectorAll('.seg2').forEach((g2) => g2.querySelectorAll('button').forEach((b) => b.onclick = () => { c[+g2.dataset.i] = b.dataset.v; g2.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); document.getElementById('go').disabled = c.some((x) => !x); }));
+  document.getElementById('go').onclick = () => send(k, { c });
+};
+V.peer = (st, k) => {
+  const ph = state.phase, r = ph === 'r1' ? 'r1' : 'r2';
+  const m1 = store.get(k + 'r1'), m2 = store.get(k + 'r2');
+  const opts = (set, rev) => st.items.map((t, i) => { const g = st.ok.includes(L[i]); return `<button class="opt ${set.has(i) ? 'sel' : ''} ${rev ? (g ? 'good' : set.has(i) ? 'bad' : '') : ''}" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(t)}</span></button>`; }).join('');
+  const vote = (label, key, init) => {
+    const set = new Set(init);
+    M.innerHTML = `<span class="eyebrow">${label}</span>${st.ctx ? `<div class="dossier">${st.ctx}</div>` : ''}<p class="q">${esc(st.q)}</p><p class="hint">${st.duo ? 'Un téléphone pour deux : mettez-vous d\'accord. ' : ''}Plusieurs réponses possibles.</p>${opts(set, false)}<button class="send" id="go">Envoyer</button>`;
+    M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { const i = +b.dataset.i; set.has(i) ? set.delete(i) : set.add(i); b.classList.toggle('sel'); });
+    document.getElementById('go').onclick = () => send(key, { s: [...set].sort().map((i) => L[i]).join('') });
+  };
+  const toSet = (m) => m ? m.s.split('').map((c) => L.indexOf(c)) : [];
+  if (ph === 'r1') { if (m1) M.innerHTML = doneScreen('1er vote envoyé', 'Attends la consigne.'); else vote('1er vote', k + 'r1', []); return; }
+  if (ph === 'r1res') { M.innerHTML = doneScreen(m1 ? '1er vote envoyé' : 'Vote fermé', "Regarde la répartition à l'écran."); return; }
+  if (ph === 'disc') {
+    M.innerHTML = `<div class="done"><div class="big">⇄</div><b>${st.duo ? 'Discutez avec le binôme voisin' : 'Discute avec ton voisin'}</b><span>${st.duo ? 'Trouvez un binôme qui n\'a pas voté comme vous.' : 'Trouve quelqu\'un qui n\'a pas voté comme toi.'}</span><span class="timer" id="tm" style="font-size:28px"></span></div>`;
+    const up = () => { const t = Math.max(0, Math.round((state.until - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+    up(); tick = setInterval(up, 500); return;
+  }
+  if (ph === 'r2') { if (m2) M.innerHTML = doneScreen('2e vote envoyé'); else vote('2e vote · tu peux changer d\'avis', k + 'r2', toSet(m1)); return; }
+  if (ph === 'r2res') { M.innerHTML = doneScreen(m2 ? '2e vote envoyé' : 'Vote fermé'); return; }
+  const mine = m2 || m1, s = toSet(mine), got = mine ? mine.s : '';
+  M.innerHTML = `<div class="fb ${got === st.ok ? 'good' : 'bad'}">Ta réponse : ${got || 'aucune'} · attendu : ${st.ok}</div>${opts(new Set(s), true)}<p class="hint">${st.ex.map((e, i) => `<b>${L[i]}.</b> ${esc(e)}`).join('<br>')}</p>`;
+};
+V.quiz = (st, k) => {
+  const ph = state.phase, qi = state.qi || 0;
+  const score = () => st.qs.reduce((a, q, i) => { const m = store.get(k + 'q' + i); return a + (m && m.a === q[1] ? 500 + Math.round(500 * Math.max(0, 1 - m.ms / (st.seconds * 1000))) : 0); }, 0);
+  if (ph === 'intro') {
+    M.innerHTML = `<p class="q">Quiz final</p><p class="hint">Choisis un pseudo pour le classement (gardé seulement pendant la séance).</p><input id="ps" class="input" maxlength="16" value="${esc(pseudo.get() || 'Étudiant·e ' + Math.floor(10 + Math.random() * 89))}"><button class="send" id="ok">C'est mon pseudo</button><p class="hint" id="okm"></p>`;
+    document.getElementById('ok').onclick = () => { pseudo.set(document.getElementById('ps').value.trim().slice(0, 16) || 'Anonyme'); document.getElementById('okm').textContent = 'Enregistré. Attends la première question.'; };
+    return;
+  }
+  const [txt, good] = st.qs[qi], key = k + 'q' + qi, mine = store.get(key);
+  if (ph === 'q') {
+    if (mine) { M.innerHTML = doneScreen('Réponse enregistrée', 'Attends la correction.'); return; }
+    M.innerHTML = `<span class="eyebrow">Question ${qi + 1} / ${st.qs.length} · <span class="timer" id="tm"></span> s</span><p class="q" style="font-size:18px">${esc(txt)}</p><div class="vf"><button class="v" data-a="1">Vrai</button><button class="f" data-a="0">Faux</button></div>`;
+    const left = () => state.qStart + st.seconds * 1000 - B.now();
+    const up = () => { const t = Math.max(0, Math.ceil(left() / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = t; if (t <= 0) { clearInterval(tick); M.innerHTML = doneScreen('Temps écoulé', 'Attends la correction.'); } };
+    up(); tick = setInterval(up, 250);
+    M.querySelectorAll('.vf button').forEach((b) => b.onclick = () => { if (left() <= 0) return; send(key, { a: b.dataset.a === '1', ms: Math.max(0, B.now() - state.qStart), n: pseudo.get() || 'Anonyme' }); });
+    return;
+  }
+  if (ph === 'qres') { M.innerHTML = `<div class="fb ${mine && mine.a === good ? 'good' : 'bad'}">${!mine ? 'Pas de réponse' : mine.a === good ? 'Juste' : 'Faux'} · la réponse était « ${good ? 'vrai' : 'faux'} »</div><p class="hint">Ton score : <b>${score()}</b> points</p>`; return; }
+  const rank = (state.board || []).findIndex((x) => x[2] === uid);
+  M.innerHTML = doneScreen(`${score()} points`, rank >= 0 ? `Tu es ${rank + 1}${rank ? 'e' : 'er'} au classement !` : "Regarde le classement à l'écran.");
+};
+
+/* ---------- Escape game : un téléphone par équipe ---------- */
+const normCode = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+V.escape = (st, k) => {
+  const ph = state.phase, N = st.rooms.length;
+  let me = store.get(k + 'me');
+  const save = () => { store.set(k + 'me', me); B.submit(code, k, { t: (myTeam() || {}).id || null, n: me.n, r: me.r, room: me.room, pen: me.pen, err: me.err, hint: me.hint, end: me.end || null }).catch(() => {}); };
+  const routeOf = (id) => st.routes.find((r) => r.id === id);
+  const roomOf = (j) => { const r = st.rooms[j]; return Object.assign({}, r, (r.by && r.by[me.r]) || {}); };
+  const left = () => state.qStart ? state.qStart + st.minutes * 60000 - B.now() : st.minutes * 60000;
+  if (!me && st.assign) {
+    const tm = myTeam(); if (!tm) { teamPicker("Choisissez d'abord votre équipe", () => V.escape(st, k)); return; }
+    const ix = Math.max(0, (C.teams || []).findIndex((x) => x.id === tm.id));
+    me = { n: tm.n, r: st.routes[ix % st.routes.length].id, room: 0, pen: 0, err: Array(N).fill(0), hint: Array(N).fill(false), end: null, flash: null }; save();
+  }
+  if (!me) {
+    let pick = null;
+    M.innerHTML = `<span class="eyebrow">Escape game</span><p class="q">Inscrivez votre équipe</p><p class="hint">Un seul téléphone par équipe. Restez assis : tout se passe ici.</p>
+      <label class="hint" for="tn">Nom de l'équipe</label><input id="tn" class="input" maxlength="18" placeholder="Les Ribosomes fous">
+      <p class="hint">Choisissez votre protéine :</p>${st.routes.map((r) => `<button class="opt" data-r="${r.id}" style="border-left:6px solid ${r.color}"><span><b>${esc(r.name)}</b><br><span class="hint">${esc(r.desc)}</span></span></button>`).join('')}
+      <button class="send" id="go" disabled>Valider l'équipe</button>`;
+    const tn = document.getElementById('tn'), go = document.getElementById('go');
+    const chk = () => go.disabled = !(tn.value.trim() && pick);
+    tn.oninput = chk;
+    M.querySelectorAll('[data-r]').forEach((b) => b.onclick = () => { pick = b.dataset.r; M.querySelectorAll('[data-r]').forEach((x) => x.classList.toggle('sel', x === b)); chk(); });
+    go.onclick = () => { me = { n: tn.value.trim().slice(0, 18), r: pick, room: 0, pen: 0, err: Array(N).fill(0), hint: Array(N).fill(false), end: null, flash: null }; save(); V.escape(st, k); };
+    return;
+  }
+  const rt = routeOf(me.r) || { name: '?', color: '#999' };
+  const top = `<div class="esc-top" style="--c:${rt.color}"><b>${esc(me.n)}</b><span>${esc(rt.name)}</span></div>`;
+  const word = `<div class="word">${st.word.split('').map((c, j) => `<span class="${j < (me.end ? N : me.room) ? 'on' : ''}">${j < (me.end ? N : me.room) ? esc(c) : ''}</span>`).join('')}</div>`;
+  if (ph === 'review') {
+    const j = Math.min(state.k || 0, N - 1), r = roomOf(j), good = r.type === 'multi' ? r.good : [r.good];
+    const body = r.type === 'code' ? `<div class="fb good">Réponse : <b>${esc(r.good)}</b></div>` : r.type === 'order' ? r.items.map((t, i) => `<div class="ordr good"><span class="n">${i + 1}</span><span class="tx">${esc(t)}</span></div>`).join('') : r.opts.map((o, i) => `<div class="opt ${good.includes(i) ? 'good' : ''}"><span class="l">${L[i]}</span><span>${esc(o)}</span></div>`).join('');
+    const mine2 = me.err[j] || me.hint[j] ? `<p class="hint">Votre équipe : ${me.err[j] ? me.err[j] + ' erreur(s)' : ''}${me.err[j] && me.hint[j] ? ' · ' : ''}${me.hint[j] ? 'indice pris' : ''}</p>` : '';
+    M.innerHTML = top + `<span class="eyebrow">Correction · salle ${j + 1} / ${N} · lettre ${esc(st.word[j])}</span><p class="q">${esc(r.q)}</p>${body}${mine2}`; return;
+  }
+  if (ph === 'intro') { M.innerHTML = top + `<div class="done"><div class="big">⏳</div><b>Équipe inscrite</b><span>Attendez le top départ du prof.</span></div>`; return; }
+  if (me.end) { M.innerHTML = top + word + `<div class="done"><div class="big">✓</div><b>Vous êtes sortis !</b><span>Temps : ${fmtT(me.end)} + ${me.pen} s de pénalités</span><span>Regardez le classement à l'écran.</span></div>`; return; }
+  if (ph !== 'open' || left() <= 0) { M.innerHTML = top + word + `<div class="done"><div class="big">⌛</div><b>${ph === 'open' ? 'Temps écoulé' : 'Jeu terminé'}</b><span>Vous étiez à la salle ${me.room + 1} / ${N}.</span><span>Regardez l'écran.</span></div>`; return; }
+  const bar = `<div class="esc-bar"><span>${me.room >= N ? 'Sortie' : `Salle ${me.room + 1} / ${N}`}</span><span class="timer" id="tm"></span><span>${me.pen ? '+' + me.pen + ' s' : ''}</span></div>`;
+  const up = () => { const e = document.getElementById('tm'); if (e) e.textContent = fmtT(left()); if (left() <= 0) { clearInterval(tick); sig = ''; render(); } };
+  if (me.flash !== null && me.flash !== undefined) {
+    const r0 = roomOf(me.flash);
+    M.innerHTML = top + bar + `<div class="fb good"><b>Salle ${me.flash + 1} réussie !</b> ${r0.win ? esc(r0.win) : ''}</div><p class="hint">Lettre gagnée : <b style="font-size:22px;color:var(--ink)">${esc(st.word[me.flash])}</b></p>${word}<button class="send" id="nx">${me.room >= N ? 'Vers la sortie' : 'Salle suivante'}</button>`;
+    document.getElementById('nx').onclick = () => { me.flash = null; store.set(k + 'me', me); V.escape(st, k); };
+    up(); clearInterval(tick); tick = setInterval(up, 500); return;
+  }
+  if (me.room >= N) {
+    M.innerHTML = top + bar + `<span class="eyebrow">La porte de sortie</span><p class="q">${esc(st.finalQ)}</p>${word}<input id="fw" class="input" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600"><p class="err" id="er"></p><button class="send" id="go">Ouvrir la porte</button>`;
+    document.getElementById('go').onclick = () => { if (normCode(document.getElementById('fw').value) === normCode(st.word)) { me.end = Math.max(1, B.now() - state.qStart); save(); V.escape(st, k); } else { me.pen += st.penalty; save(); document.getElementById('er').textContent = `Ce n'est pas le bon mot : +${st.penalty} s.`; } };
+    up(); clearInterval(tick); tick = setInterval(up, 500); return;
+  }
+  const j = me.room, r = roomOf(j);
+  let ui = '', getAns = null;
+  if (r.type === 'choice' || r.type === 'multi') {
+    const set1 = new Set();
+    ui = r.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join('');
+    getAns = () => r.type === 'choice' ? (set1.size === 1 && set1.has(r.good)) : ([...set1].sort().join(',') === [...r.good].sort().join(','));
+    setTimeout(() => M.querySelectorAll('.opt[data-i]').forEach((b) => b.onclick = () => { const i = +b.dataset.i; if (r.type === 'choice') { set1.clear(); set1.add(i); M.querySelectorAll('.opt').forEach((x) => x.classList.toggle('sel', x === b)); } else { set1.has(i) ? set1.delete(i) : set1.add(i); b.classList.toggle('sel'); } }), 0);
+  } else if (r.type === 'order') {
+    const ord = [...r.start];
+    const drawO = () => { const box = document.getElementById('ob'); box.innerHTML = ord.map((x, i) => `<div class="ordr"><span class="n">${i + 1}</span><span class="tx">${esc(r.items[x])}</span><span class="mv"><button data-u="${i}" ${i === 0 ? 'disabled' : ''}>▲</button><button data-d="${i}" ${i === ord.length - 1 ? 'disabled' : ''}>▼</button></span></div>`).join('');
+      box.querySelectorAll('[data-u]').forEach((b) => b.onclick = () => { const i = +b.dataset.u; [ord[i - 1], ord[i]] = [ord[i], ord[i - 1]]; drawO(); });
+      box.querySelectorAll('[data-d]').forEach((b) => b.onclick = () => { const i = +b.dataset.d; [ord[i + 1], ord[i]] = [ord[i], ord[i + 1]]; drawO(); }); };
+    ui = '<div id="ob" style="display:flex;flex-direction:column;gap:6px"></div>'; setTimeout(drawO, 0);
+    getAns = () => ord.every((x, i) => x === i);
+  } else {
+    ui = `<input id="cd" class="input" autocomplete="off" ${r.numeric ? 'inputmode="numeric"' : 'autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.1em;font-weight:600"'} placeholder="${esc(r.ph || 'Code')}">`;
+    getAns = () => normCode(document.getElementById('cd').value) === normCode(r.good);
+  }
+  M.innerHTML = top + bar + `<span class="eyebrow">${esc(r.t)}</span>${r.story ? `<div class="dossier">${r.story}</div>` : ''}<p class="q">${esc(r.q)}</p>${r.type === 'multi' ? '<p class="hint">Plusieurs réponses possibles.</p>' : ''}${ui}
+    <p class="err" id="er"></p>${me.hint[j] ? `<div class="fb" style="background:var(--plum-soft)"><b>Indice :</b> ${esc(r.hint)}</div>` : ''}
+    <button class="send" id="go">Valider</button>${!me.hint[j] && r.hint ? `<button class="opt" id="hi" style="justify-content:center">Indice (+${st.hintPenalty} s)</button>` : ''}`;
+  document.getElementById('go').onclick = () => {
+    if (left() <= 0) return;
+    if (getAns()) { me.flash = j; me.room = j + 1; save(); V.escape(st, k); }
+    else { me.err[j] += 1; me.pen += st.penalty; save(); const e = document.getElementById('er'); e.textContent = `Raté : +${st.penalty} s. Discutez et réessayez.`; document.querySelector('.esc-bar span:last-child').textContent = '+' + me.pen + ' s'; }
+  };
+  const hi = document.getElementById('hi');
+  if (hi) hi.onclick = () => { me.hint[j] = true; me.pen += st.hintPenalty; save(); V.escape(st, k); };
+  up(); clearInterval(tick); tick = setInterval(up, 500);
+};
+
+/* ---------- Enquête clinique (une réponse par équipe) ---------- */
+V.case = (st, k) => {
+  const ph = state.phase, tm = myTeam(), team = tm && tm.n, mine = store.get(k);
+  const lvl = ph === 'reveal' ? st.clues.length : +String(ph).slice(1) || 1, pts = (c) => fr((st.pts || [2, 1.5, 1])[c - 1] || 0);
+  if (!team) { teamPicker("Choisissez d'abord votre équipe", () => V.case(st, k)); return; }
+  const clues = st.clues.slice(0, lvl).map((c, j) => `<div class="dossier"><b>Indice ${j + 1}.</b> ${c}</div>`).join('');
+  if (ph === 'reveal') {
+    const ok = mine && mine.i === st.good;
+    M.innerHTML = `<span class="eyebrow">${esc(st.eyebrow || 'Enquête')}</span>${mine ? `<div class="fb ${ok ? 'good' : 'bad'}">${ok ? `Bon diagnostic : +${pts(mine.c)} points` : 'Mauvais diagnostic : 0 point'}</div>` : ''}<p class="q">${esc(st.opts[st.good])}</p><p class="hint">${esc(st.ex)}</p>`;
+    return;
+  }
+  if (mine) { M.innerHTML = `<span class="eyebrow">${esc(st.eyebrow || 'Enquête')}</span>${clues}${doneScreen('Diagnostic envoyé', `Avec ${mine.c} indice(s) : ${pts(mine.c)} points si c'est juste.`)}`; return; }
+  let pick = -1;
+  M.innerHTML = `<span class="eyebrow">${esc(st.eyebrow || 'Enquête')} · ${esc(team)}</span>${clues}${lvl < st.clues.length ? `<p class="hint">Un autre indice va arriver… mais il fera baisser vos points.</p>` : ''}<p class="q">${esc(st.q)}</p>
+    ${st.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join('')}<button class="send" id="go" disabled>Diagnostiquer maintenant (${pts(lvl)} pts)</button>`;
+  M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { pick = +b.dataset.i; M.querySelectorAll('.opt').forEach((x) => x.classList.toggle('sel', x === b)); document.getElementById('go').disabled = false; });
+  document.getElementById('go').onclick = () => send(k, { i: pick, c: lvl, n: team });
+};
+V.caseboard = () => { M.innerHTML = doneScreen('Enquête terminée', "Regardez le classement des enquêteurs à l'écran."); };
+
+/* ---------- Équipes (un téléphone par équipe, compétition sur tout le TD) ---------- */
+const myTeam = () => { const t = store.get('team'); return t && typeof t === 'object' ? t : null; };
+const fr = (x) => String(x).replace('.', ',');
+const teamTop = (t) => `<div class="esc-top" style="--c:${t.c}"><b>${esc(t.n)}</b><span>équipe</span></div>`;
+function teamPicker(title, done) {
+  const T0 = C.teams || [], taken = state.taken || [];
+  M.innerHTML = `<span class="eyebrow">Équipes</span><p class="q">${esc(title || 'Choisissez votre équipe')}</p><p class="hint">Un seul téléphone par équipe : c'est lui qui répondra pendant tout le TD.</p>
+    ${T0.map((t) => { const tk = taken.includes(t.id); return `<button class="opt" data-t="${t.id}" ${tk ? 'disabled' : ''} style="border-left:8px solid ${t.c}"><span><b>${esc(t.n)}</b>${tk ? '<br><span class="hint">déjà prise</span>' : ''}</span></button>`; }).join('')}`;
+  M.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { const t = T0.find((x) => x.id === b.dataset.t); store.set('team', { id: t.id, n: t.n, c: t.c }); done(); });
+}
+V.teams = (st, k) => {
+  const t = myTeam();
+  if (!t) { teamPicker(st.q, () => send(k, { ok: 1 })); return; }
+  M.innerHTML = `<div class="done"><div class="big" style="color:${t.c}">●</div><b>${esc(t.n)}</b><span>Votre équipe est inscrite. Gardez ce téléphone pour tout le TD : il répondra pour toute l'équipe.</span><button class="opt" id="chg" style="justify-content:center;margin-top:14px">Changer d'équipe</button></div>`;
+  document.getElementById('chg').onclick = () => { store.set('team', null); V.teams(st, k); };
+};
+V.tqcm = (st, k) => {
+  const ph = state.phase, mine = store.get(k), t = myTeam();
+  if (!t) { teamPicker("Choisissez d'abord votre équipe", () => { sig = ''; render(); }); return; }
+  const top = teamTop(t);
+  if (ph === 'ready') { M.innerHTML = top + doneScreen('Préparez-vous', `La question arrive : ${st.seconds || 60} secondes pour répondre en équipe.`); return; }
+  if (ph === 'reveal') {
+    const got = mine ? mine.s : '', ok = got === st.ok;
+    M.innerHTML = top + `<div class="fb ${ok ? 'good' : 'bad'}">${ok ? `Bonne réponse : +${fr(st.pts ?? 2)} points` : `Votre réponse : ${got || 'aucune'} · attendu : ${st.ok}`}</div>` +
+      st.items.map((x, i) => { const g = st.ok.includes(L[i]); return `<div class="opt ${g ? 'good' : got.includes(L[i]) ? 'bad' : ''}"><span class="l">${L[i]}</span><span>${esc(x)}<br><span class="hint">${esc(st.ex[i])}</span></span></div>`; }).join('');
+    return;
+  }
+  const left = () => state.qStart + (st.seconds || 60) * 1000 - B.now();
+  if (mine) { M.innerHTML = top + doneScreen('Réponse envoyée', "Attendez la correction."); return; }
+  if (ph !== 'open' || left() <= 0) { M.innerHTML = top + doneScreen('Temps écoulé', "Regardez l'écran."); return; }
+  const set1 = new Set();
+  M.innerHTML = top + `<div class="esc-bar"><span>${esc(st.title)}</span><span class="timer" id="tm"></span><span></span></div><p class="q">${esc(st.q)}</p><p class="hint">Plusieurs réponses possibles · mettez-vous d'accord.</p>${st.items.map((x, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(x)}</span></button>`).join('')}<button class="send" id="go">Envoyer la réponse de l'équipe</button>`;
+  M.querySelectorAll('.opt[data-i]').forEach((b) => b.onclick = () => { const i = +b.dataset.i; set1.has(i) ? set1.delete(i) : set1.add(i); b.classList.toggle('sel'); });
+  document.getElementById('go').onclick = () => { if (left() <= 0) return; send(k, { s: [...set1].sort().map((i) => L[i]).join('') }); };
+  const up = () => { const e = document.getElementById('tm'); const l = left(); if (e) e.textContent = fmtT(l); if (l <= 0) { clearInterval(tick); sig = ''; render(); } };
+  up(); tick = setInterval(up, 500);
+};
+V.lightning = (st, k) => {
+  const ph = state.phase, mine = store.get(k), t = myTeam(), sec = st.seconds || 20;
+  if (!t) { teamPicker("Choisissez d'abord votre équipe", () => { sig = ''; render(); }); return; }
+  const top = teamTop(t);
+  if (ph === 'ready') { M.innerHTML = top + `<div class="done"><div class="big">⚡</div><b>Manche éclair !</b><span>${sec} secondes, un seul essai : le premier clic compte.</span></div>`; return; }
+  if (ph === 'reveal') { const ok = mine && mine.i === st.good; M.innerHTML = top + `<div class="fb ${ok ? 'good' : 'bad'}">${!mine ? 'Pas de réponse' : ok ? 'Juste ! Regardez vos points à l\'écran.' : 'Raté…'}</div><p class="q">${esc(st.opts[st.good])}</p><p class="hint">${esc(st.ex)}</p>`; return; }
+  const left = () => state.qStart + sec * 1000 - B.now();
+  if (mine) { M.innerHTML = top + doneScreen('Réponse envoyée', `En ${(mine.ms / 1000).toFixed(1).replace('.', ',')} s. Suspense…`); return; }
+  if (left() <= 0) { M.innerHTML = top + doneScreen('Temps écoulé', "Regardez l'écran."); return; }
+  M.innerHTML = top + `<div class="esc-bar"><span>Manche éclair</span><span class="timer" id="tm" style="font-size:20px"></span><span></span></div><p class="q" style="font-size:17px">${esc(st.q)}</p><p class="hint">Touchez votre réponse : elle part tout de suite.</p>${st.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join('')}`;
+  M.querySelectorAll('.opt[data-i]').forEach((b) => b.onclick = () => { if (left() <= 0) return; send(k, { i: +b.dataset.i, ms: Math.max(0, B.now() - state.qStart) }); });
+  const up = () => { const e = document.getElementById('tm'); const l = left(); if (e) e.textContent = Math.max(0, Math.ceil(l / 1000)) + ' s'; if (l <= 0) { clearInterval(tick); sig = ''; render(); } };
+  up(); tick = setInterval(up, 200);
+};
+V.scores = (st) => {
+  const t = myTeam(), b = state.board || [], i = t ? b.findIndex((x) => x[0] === t.id) : -1;
+  M.innerHTML = (t ? teamTop(t) : '') + doneScreen(i >= 0 ? `${fr(b[i][1])} points` : 'Classement', i >= 0 ? `Votre équipe est ${i + 1}${i ? 'e' : 're'} sur ${b.length}. Regardez l'écran !` : "Regardez le classement à l'écran.");
+};
+
+const c0 = new URLSearchParams(location.search).get('c');
+if (c0) connect(c0.toUpperCase()); else askCode();
+</script>
+</body>
+</html>
