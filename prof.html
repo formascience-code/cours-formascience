@@ -9,7 +9,9 @@
 <link rel="stylesheet" href="app.css">
 <style>
 html{font-size:clamp(14px,1.2vw,24px)}
-body{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+body{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+main{touch-action:pan-y}
+@media (pointer:coarse){footer{padding:.6rem .8rem calc(.6rem + env(safe-area-inset-bottom))}footer button{font-size:1rem;padding:.7rem 1.1rem}footer .info{font-size:.85rem}}
 #app{flex:1;min-height:0;display:flex;flex-direction:column}
 .rail{display:flex;gap:.35rem;padding:.6rem 1.2rem 0}
 .seg{flex:1 1 0;display:flex;flex-direction:column;gap:.25rem;min-width:0}
@@ -37,7 +39,20 @@ h1.title{font-size:1.9rem;font-weight:700;color:var(--sage-ink);margin:0;line-he
 .url{font-size:.8rem;color:var(--muted);word-break:break-all}
 .timer{font-variant-numeric:tabular-nums;font-weight:700;color:var(--honey)}
 .correction{font-size:1rem;background:var(--ok-soft);color:var(--ink);border-radius:.6rem;padding:.6rem .9rem}
-footer{border-top:1px solid var(--line);background:var(--surface);padding:.5rem 1.2rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;font-size:.75rem}
+footer{border-top:1px solid var(--line);background:var(--surface);padding:.5rem 1.2rem;display:flex;gap:.6rem;align-items:center;flex-wrap:nowrap;font-size:.75rem}
+footer button{white-space:nowrap;flex:none}
+footer .info{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pts li.stp{list-style:none;margin-left:-1.2em;display:flex;gap:.6em;align-items:flex-start;padding:.35em .5em;border-radius:.6em}
+.pts li.stp.cur{background:var(--plum-soft)}
+.pts li.stp.past{opacity:.6}
+.pts .num{flex:none;width:1.7em;height:1.7em;border-radius:50%;background:var(--plum);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.85em;margin-top:.05em}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem 1.6rem}
+.ccard .t{font-weight:700;display:flex;justify-content:space-between;gap:.6rem;margin-bottom:.3rem}
+.ccard .t .p{font-variant-numeric:tabular-nums}
+.cbtns{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.cbtn{border:1.5px solid var(--line);border-radius:.6rem;padding:.5rem;text-align:center;font-weight:600;background:var(--surface)}
+.cbtn.okA{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)} .cbtn.okR{background:var(--ko-soft);border-color:var(--ko);color:var(--ko)} .cbtn.dim{opacity:.35}
+.ccard .why{font-size:.85rem;color:var(--muted);margin-top:.25rem}
 footer button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:.5rem;padding:.4rem .8rem;font-size:.75rem}
 footer .primary{background:var(--btn);color:#fff;border-color:var(--btn);font-weight:600}
 footer .sp{flex:1}
@@ -86,7 +101,7 @@ async function boot() {
   if (prev && (await B.sessionHost(prev)) !== uid) prev = null;
   app.innerHTML = `<div class="start"><img src="img/logo.png" alt="formaScience"><h1 class="title">${esc(C.title)}</h1><p>${esc(C.subtitle)} · ${S.length} étapes · ${S.reduce((a, s) => a + s.min, 0)} min</p>
     <button id="new">Démarrer une nouvelle séance</button>${prev ? `<button class="alt" id="resume">Reprendre la séance ${prev}</button>` : ''}
-    <p class="wait">Raccourcis pendant le cours : → action suivante (diapo, animation, résultats…) · ← retour · N notes du prof.</p></div>`;
+    <p class="wait">Deux boutons : « Avant → » avance d'un pas, « ← Retour » recule d'un pas. Clavier ou télécommande : → avancer · ← reculer · N notes du prof. Sur tablette : glisser le doigt vers la gauche pour avancer, vers la droite pour reculer.</p></div>`;
   document.getElementById('new').onclick = async () => {
     if (prev) await B.clear(prev);
     code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
@@ -97,19 +112,28 @@ async function boot() {
 function start() {
   try { localStorage.setItem('prof-code-' + COURSE_ID, code); } catch (e) {}
   app.innerHTML = `<nav class="rail" id="rail"></nav><main id="main"></main><div class="notes" id="notes" hidden></div>
-  <footer><button id="prev">← Étape précédente</button><button class="primary" id="act"></button><button id="next">Étape suivante →</button>
+  <footer><button id="prev" title="Reculer d'un pas (touche ←)">← Retour</button><button class="primary" id="fwd" title="Avancer d'un pas (touche →)">Avant →</button>
   <span class="info" id="info"></span><span class="sp"></span><span class="info">Séance <b>${code}</b> · <span id="cnt">0</span> connectés</span>
   <button id="nt">Notes (N)</button><button id="stop">Terminer la séance</button></footer>`;
   B.onCount(code, (n) => { count = n; const c = document.getElementById('cnt'); if (c) c.textContent = n; const c2 = document.getElementById('cnt2'); if (c2) c2.textContent = n; });
   B.onState(code, (s) => { if (!s) { ended(); return; } state = s; syncSubs(); render(); });
-  document.getElementById('prev').onclick = () => goStep(state.step - 1);
-  document.getElementById('next').onclick = () => goStep(state.step + 1);
+  document.getElementById('prev').onclick = () => back();
+  document.getElementById('fwd').onclick = () => forward();
+  // tablette : glisser vers la gauche = avancer, vers la droite = reculer
+  let tx = null, ty = null;
+  const mainEl = document.getElementById('main');
+  mainEl.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+  mainEl.addEventListener('touchend', (e) => {
+    if (tx === null) return; const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty; tx = null;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) forward(); else back();
+  });
   document.getElementById('nt').onclick = toggleNotes;
   document.getElementById('stop').onclick = stopAsk;
   document.addEventListener('keydown', (e) => {
     if (e.target.closest('input,textarea,select')) return;
-    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); const a = document.getElementById('act'); if (a) a.hidden ? goStep(state.step + 1) : a.click(); }
-    if (e.key === 'ArrowLeft') back();
+    if (['ArrowRight', ' ', 'PageDown', 'ArrowDown'].includes(e.key)) { e.preventDefault(); forward(); }
+    if (['ArrowLeft', 'PageUp', 'ArrowUp'].includes(e.key)) { e.preventDefault(); back(); }
     if (e.key.toLowerCase() === 'n') toggleNotes();
   });
 }
@@ -122,15 +146,30 @@ function stopAsk() {
 }
 function ended() { clearInterval(tick); state = null; Object.keys(subs).forEach((k) => { subs[k](); delete subs[k]; }); app.innerHTML = `<div class="start"><img src="img/logo.png" alt="formaScience"><h1 class="title">Séance terminée</h1><p>Toutes les réponses ont été effacées.</p><button onclick="location.reload()">Nouvelle séance</button></div>`; }
 
+const PHASES = { poll: ['open', 'results', 'reveal'], tap: ['open', 'results', 'reveal'], number: ['open', 'results', 'reveal'],
+  match: ['open', 'reveal'], order: ['open', 'reveal'], classify: ['open', 'reveal'], peer: ['r1', 'r1res', 'r2', 'r2res', 'reveal'] };
+/* Avancer d'UN pas : action de l'écran en cours (animation, diapo, phase de question), sinon étape suivante */
+let nextAct = null;
+function forward() { if (!state) return; if (nextAct) nextAct(); else goStep(state.step + 1); }
+/* Retour d'UN pas : étape d'animation, diapo, phase de question, sinon fin de l'étape précédente */
 function back() {
   const st = S[state.step];
   if (st.kind === 'explain' && ((state.k || 0) > 0 || (state.sub || 0) > 0)) {
     if ((state.k || 0) > 0) set({ k: state.k - 1 }); else { const p = st.slides[state.sub - 1]; set({ sub: state.sub - 1, k: p.anim ? ANIMS[p.anim].caps.length - 1 : 0 }); }
-  } else goStep(state.step - 1);
+    return;
+  }
+  const ph = PHASES[st.kind];
+  if (ph) { const i = ph.indexOf(state.phase); if (i > 0) { const p = ph[i - 1]; set(p === 'open' && st.seconds ? { phase: p, until: B.now() + st.seconds * 1000 } : { phase: p }); return; } }
+  if (st.kind === 'quiz' && state.phase !== 'intro') { set({ phase: 'intro', qi: 0 }); return; }
+  goStep(state.step - 1, true);
 }
-function goStep(i) {
+function goStep(i, atEnd) {
   if (i < 0 || i >= S.length) return;
-  B.setState(code, { step: i, phase: initPhase(S[i].kind), qi: 0, sub: 0, k: 0, until: null, qStart: null, board: null });
+  const st = S[i], p = { step: i, phase: initPhase(st.kind), qi: 0, sub: 0, k: 0, until: null, qStart: null, board: null };
+  if (atEnd && st.kind === 'explain') { const n = st.slides.length - 1, last = st.slides[n]; p.sub = n; p.k = last.anim ? ANIMS[last.anim].caps.length - 1 : 0; }
+  if (atEnd && PHASES[st.kind]) p.phase = PHASES[st.kind][PHASES[st.kind].length - 1];
+  if (st.seconds && p.phase === 'open') p.until = B.now() + st.seconds * 1000;
+  B.setState(code, p);
 }
 const set = (p) => B.setState(code, p);
 
@@ -158,17 +197,15 @@ function render() {
   rail.querySelectorAll('.dot').forEach((d) => d.onclick = () => goStep(+d.dataset.j));
   const done = S.slice(0, i).reduce((a, s) => a + s.min, 0), tot = S.reduce((a, s) => a + s.min, 0);
   document.getElementById('info').textContent = `Étape ${i + 1}/${S.length} · ${done}→${done + st.min} min sur ${tot}`;
-  document.getElementById('prev').disabled = i === 0;
-  document.getElementById('prev').onclick = () => goStep(i - 1);
-  document.getElementById('next').disabled = i === S.length - 1;
+  document.getElementById('prev').disabled = i === 0 && !(state.sub || state.k);
   const n = document.getElementById('notes'); n.hidden = !showNotes;
   const sn = st.kind === 'explain' ? (st.slides[state.sub || 0].notes || []) : [];
   n.innerHTML = `<h3>Notes du prof · ${st.min} min</h3><ul>${[...sn, ...(st.notes || [])].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
   clearInterval(tick); tick = null;
-  const act = document.getElementById('act');
   const a = R[st.kind](st, document.getElementById('main'));
-  if (a) { act.hidden = false; act.textContent = a[0] + ' →'; act.onclick = a[1]; }
-  else { act.hidden = true; act.onclick = () => goStep(i + 1); }
+  nextAct = a ? a[1] : null;
+  const f = document.getElementById('fwd'); f.title = a ? a[0] + ' (touche →)' : (i < S.length - 1 ? 'Étape suivante : ' + S[i + 1].title : 'Fin du cours');
+  f.disabled = !a && i === S.length - 1;
 }
 const head = (st, eyebrow) => `<span class="eyebrow">${esc(eyebrow || C.parts[st.part])}</span><h1 class="title">${esc(st.title)}</h1>`;
 const nAns = (k) => `<span class="wait"><b class="counter">${vals(k).length}</b> réponse(s) · <span id="cnt2">${count}</span> connectés</span>`;
@@ -193,13 +230,14 @@ R.explain = (st, m) => {
   const pos = `<span class="slidepos">Diapo ${sub + 1} / ${n}</span>`;
   let body;
   if (sl.anim) {
-    const A = ANIMS[sl.anim];
-    const ratio = sl.anim === 'compaction' ? 1.79 : sl.anim === 'nmd' ? 3.1 : sl.anim === 'promoteurs' ? 2.9 : sl.anim === 'epissage' ? 2.2 : 2.43;
-    body = `<div class="animbox" style="max-width:calc((100vh - 17rem) * ${ratio})">${A.draw(k)}<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div></div>`;
+    const A = ANIMS[sl.anim], svg = A.draw(k), vb = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), ratio = vb ? vb[1] / vb[2] : 2.4;
+    const box = `<div class="animbox" style="max-width:calc((100dvh - ${sl.nocap ? 13 : 17}rem) * ${ratio.toFixed(2)})">${svg}${sl.nocap ? '' : `<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div>`}</div>`;
+    const li = (p) => (typeof p === 'string' ? `<li>${p}</li>` : k < p.k ? '' : `<li class="stp ${p.k === k ? 'cur' : 'past'}"><span class="num">${p.n}</span><span>${p.t}</span></li>`);
+    body = sl.pts ? `<div class="slide" style="grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr)"><ul class="pts">${sl.pts.map(li).join('')}</ul>${box}</div>` : box;
   } else if (sl.table) {
     body = `${renderTable(sl.table)}${sl.memo ? `<div class="memo">${sl.memo.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : ''}`;
   } else {
-    body = `<div class="slide ${sl.img ? '' : 'solo'}"><ul class="pts">${sl.pts.map((p) => `<li>${p}</li>`).join('')}</ul>${sl.img ? `<img class="fig" src="${IMGBASE}${sl.img}.png" alt="Schéma">` : ''}</div>`;
+    body = `<div class="slide ${sl.img ? '' : 'solo'}"><ul class="pts">${sl.pts.map((p) => `<li>${p}</li>`).join('')}</ul>${sl.img ? `<img class="fig" src="${IMGBASE}${sl.img}.png" alt="Schéma">` : ''}</div>${sl.fig ? `<div class="figsvg">${FIGS[sl.fig]()}</div>` : ''}`;
   }
   m.innerHTML = `<span class="eyebrow">${esc(C.parts[st.part])} · ${pos}</span><h1 class="title">${esc(sl.t)}</h1>${body}`;
   if (sl.anim && k < ANIMS[sl.anim].caps.length - 1) return ['Animation : étape suivante', () => set({ k: k + 1 })];
@@ -259,9 +297,30 @@ R.order = (st, m) => {
 R.classify = (st, m) => {
   const k = 's' + state.step, v = vals(k), ph = state.phase;
   let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
-  if (ph === 'open') { m.innerHTML = h + `<div class="memo">${st.items.map(([t]) => `<span>${esc(t)}</span>`).join('')}</div>` + nAns(k); return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
-  const rows = st.items.map(([t, a], i) => [t, a, pct(v.filter((x) => x.c && x.c[i] === a).length, v.length)]).sort((x, y) => x[2] - y[2]);
-  m.innerHTML = h + `<div class="bars" style="font-size:.9rem">${rows.map(([t, a, r]) => `<div class="bar ${r >= 70 ? 'good' : ''}"><span class="k"></span><div><div class="txt">${esc(t)} → ${a === 'A' ? '<span class="pill act">Active</span>' : '<span class="pill rep">Réprime</span>'}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`).join('')}</div><p class="wait">% de bonnes réponses par situation, des plus ratées aux mieux réussies · ${v.length} réponse(s)</p>`;
+  if (ph === 'open') {
+    const timed = st.seconds && state.until;
+    const list = st.table ? `<div class="cgrid">${st.items.map(([t]) => `<div class="ccard"><div class="t"><span>${esc(t)}</span></div><div class="cbtns"><div class="cbtn">Active</div><div class="cbtn">Réprime</div></div></div>`).join('')}</div>` : `<div class="memo">${st.items.map(([t]) => `<span>${esc(t)}</span>`).join('')}</div>`;
+    m.innerHTML = h + (timed ? `<div class="timer" style="font-size:3rem" id="tm"></div>` : '') + list + nAns(k);
+    if (timed) {
+      const up = () => { const t = Math.max(0, Math.ceil((state.until - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; if (t <= 0) { clearInterval(tick); if (state.phase === 'open' && S[state.step] === st) set({ phase: 'reveal' }); } };
+      up(); tick = setInterval(up, 250);
+    }
+    return ['Afficher la correction', () => set({ phase: 'reveal' })];
+  }
+  const ok = (i, a) => pct(v.filter((x) => x.c && x.c[i] === a).length, v.length);
+  const pill = (a) => (a === 'A' ? '<span class="pill act">Active</span>' : '<span class="pill rep">Réprime</span>');
+  if (st.table) {
+    m.innerHTML = h + `<div class="cgrid">${st.items.map(([t, a, why], i) => `<div class="ccard"><div class="t"><span>${esc(t)}</span><span class="p" style="color:${ok(i, a) >= 70 ? 'var(--ok)' : 'var(--ko)'}">${ok(i, a)} %</span></div><div class="cbtns"><div class="cbtn ${a === 'A' ? 'okA' : 'dim'}">Active</div><div class="cbtn ${a === 'R' ? 'okR' : 'dim'}">Réprime</div></div>${why ? `<div class="why">${esc(why)}</div>` : ''}</div>`).join('')}</div><p class="wait">% de bonnes réponses par situation · ${v.length} réponse(s)</p>`;
+    return null;
+    m.innerHTML = h + `<div class="tbl-wrap"><table class="tbl cls"><thead><tr><th>Situation</th><th>Effet</th><th>Pourquoi</th><th style="text-align:right">Justes</th></tr></thead><tbody>${st.items.map(([t, a, why], i) => `<tr><td><b>${esc(t)}</b></td><td>${pill(a)}</td><td class="why">${esc(why || '')}</td><td class="p" style="color:${ok(i, a) >= 70 ? 'var(--ok)' : 'var(--ko)'}">${ok(i, a)} %</td></tr>`).join('')}</tbody></table></div><p class="wait">% de bonnes réponses par situation · ${v.length} réponse(s)</p>`;
+    return null;
+  }
+  const rows = st.items.map(([t, a], i) => [t, a, ok(i, a)]).sort((x, y) => x[2] - y[2]);
+  m.innerHTML = h + `<div class="bars" style="font-size:.9rem">${rows.map(([t, a, r]) => `<div class="bar ${r >= 70 ? 'good' : ''}"><span class="k"></span><div><div class="txt">${esc(t)} → ${pill(a)}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`).join('')}</div><p class="wait">% de bonnes réponses par situation, des plus ratées aux mieux réussies · ${v.length} réponse(s)</p>`;
+  return null;
+};
+R.thanks = (st, m) => {
+  m.innerHTML = `<h1 class="title" style="text-align:center;font-size:2.4rem">Merci pour votre attention !</h1><div class="figsvg">${FIGS.merci()}</div><p class="q" style="text-align:center;color:var(--muted);letter-spacing:.08em;font-weight:700">BONNES RÉVISIONS</p>`;
   return null;
 };
 R.peer = (st, m) => {
@@ -271,13 +330,7 @@ R.peer = (st, m) => {
     return `<div class="bar ${good ? 'good' : ''}"><span class="k">${L[i]}</span><div><div class="txt">${esc(t)}</div><div class="track ${two ? 'two' : ''}">${two ? `<div class="fill r1" style="width:${a}%"></div>` : ''}<div class="fill" style="width:${two ? b : a}%"></div></div>${rev ? `<div class="ex">${esc(st.ex[i])}</div>` : ''}</div><span class="pct">${two ? b : a} %</span></div>`; }).join('')}</div>`;
   const leg = (rev) => `<div class="legend"><span><span class="sw" style="background:var(--line)"></span>1er vote (${v1.length})</span><span><span class="sw" style="background:${rev ? 'var(--ok)' : 'var(--sage)'}"></span>2e vote (${v2.length})</span></div>`;
   if (ph === 'r1') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er vote')}<p class="q">${esc(st.q)}</p><p class="wait">Vote seul, sans en parler à ton voisin.</p>${nAns(k + 'r1')}`; return ['Afficher le 1er vote', () => set({ phase: 'r1res' })]; }
-  if (ph === 'r1res') { m.innerHTML = `${head(st, C.parts[st.part] + ' · résultats du 1er vote')}${bars(false, false)}<p class="wait">% d'étudiants qui ont coché chaque proposition (${v1.length} votes) · pas de correction à ce stade</p>`; return ['Lancer la discussion (2 min)', () => set({ phase: 'disc', until: B.now() + 120000 })]; }
-  if (ph === 'disc') {
-    m.innerHTML = `${head(st, 'Discussion')}<p class="q" style="font-size:1.6rem">Trouve un voisin qui n'a pas voté comme toi et convainc-le.</p><div class="timer" style="font-size:4rem" id="tm"></div>`;
-    const up = () => { const t = Math.max(0, Math.round((state.until - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
-    up(); tick = setInterval(up, 500);
-    return ['Ouvrir le 2e vote', () => set({ phase: 'r2' })];
-  }
+  if (ph === 'r1res' || ph === 'disc') { m.innerHTML = `<span class="eyebrow">${esc(C.parts[st.part])} · résultats du 1er vote</span><h1 class="title">Écoute l'analyse du QCM par Mazen</h1>${bars(false, false)}<p class="wait">% d'étudiants qui ont coché chaque proposition (${v1.length} votes) · pas de correction à ce stade</p>`; return ['Relancer le vote', () => set({ phase: 'r2' })]; }
   if (ph === 'r2') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 2e vote')}<p class="q">${esc(st.q)}</p><p class="wait">Revote : tu peux changer d'avis.</p>${nAns(k + 'r2')}`; return ['Afficher les 2 votes', () => set({ phase: 'r2res' })]; }
   if (ph === 'r2res') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er et 2e votes')}${bars(true, false)}${leg(false)}`; return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
   m.innerHTML = `${head(st, 'Correction · réponses ' + st.ok.split('').join(', '))}${bars(true, true)}${leg(true)}`; return null;

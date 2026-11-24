@@ -79,10 +79,27 @@ img.fig{display:block;max-width:100%;height:auto;background:#fff;border-radius:1
 .tbl td{padding:.42em .6em;border-bottom:1px solid var(--line);vertical-align:middle}
 .pill{display:inline-block;padding:.1em .55em;border-radius:99px;font-weight:600;font-size:.9em;white-space:nowrap}
 .pill.act{background:var(--ok-soft);color:var(--ok)} .pill.rep{background:var(--ko-soft);color:var(--ko)} .pill.neu{background:var(--sage-soft);color:var(--sage-ink)}
-.tbl.meth th,.tbl.meth td{text-align:center}
-.tbl.meth tbody th{text-align:left;white-space:nowrap}
+.tbl.meth{table-layout:fixed;font-size:.9em}
+.tbl.meth th,.tbl.meth td{text-align:center;padding:.4em .25em;overflow-wrap:anywhere}
+.tbl.meth thead th:first-child{width:17%}
+.tbl.meth tbody th{text-align:left;line-height:1.2}
+.tbl.meth .tag{display:block;font-size:.72em;font-weight:600;letter-spacing:.02em;text-transform:uppercase;margin-top:.15em}
+.tbl.meth tr.keep th{background:#d9ead9;color:#2f5a3a;font-weight:700}
+.tbl.meth tr.keep .tag{color:var(--ok)}
+.tbl.meth tr.keep th,.tbl.meth tr.keep td{border-top:3px solid var(--ok);border-bottom:3px solid var(--ok)}
+.tbl.meth tr.keep th{border-left:3px solid var(--ok)} .tbl.meth tr.keep td:last-child{border-right:3px solid var(--ok)}
+.tbl.meth tr.keep td.c.act{background:#bfdcc4;color:#24502f;font-weight:700}
+.tbl.meth tr.off th,.tbl.meth tr.off td{color:#a3a7ad;background:#f1f2f3;font-weight:400}
+.tbl.meth tr.off .tag{color:#a3a7ad}
+.tbl.meth td.c.off{color:#a3a7ad;background:#e9eaec;font-weight:400}
 .tbl.meth td.c.act{background:var(--ok-soft);color:var(--ok);font-weight:600}
 .tbl.meth td.c.rep{background:var(--ko-soft);color:var(--ko);font-weight:600}
 .tbl.meth td.c.mix{background:#f6efd9;color:#8a6d23;font-weight:600}
 .memo{display:flex;flex-wrap:wrap;gap:.5em}
 .memo span{background:var(--plum-soft);color:var(--ink);border-radius:.5em;padding:.3em .7em;font-size:.85em}
+
+/* Schémas fixes et animation finale */
+.figsvg{width:100%}
+.figsvg .anim-svg{max-height:calc(100dvh - 20rem);width:auto;max-width:100%;margin:0 auto}
+.tbl.cls td.why{color:var(--muted);font-size:.92em}
+.tbl.cls td.p{font-variant-numeric:tabular-nums;font-weight:700;text-align:right;white-space:nowrap}
