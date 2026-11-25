@@ -3,6 +3,8 @@
 window.COURSE = {
  "title": "Réguler l'expression des gènes",
  "subtitle": "UE2 · Ch5 · cours interactif",
+ "chrono": 45,
+ "chrono_revote": 15,
  "parts": [
   "Accueil",
   "1 · Qui régule ?",
@@ -89,17 +91,26 @@ window.COURSE = {
    "kind": "tap",
    "min": 2,
    "title": "Schéma à compléter",
-   "q": "Touche la séquence où se fixe un activateur qui agit à distance du gène.",
+   "q": "Touche la séquence sur laquelle se fixe un facteur régulateur.",
    "img": "gene",
-   "zone": [
-    5,
-    53,
-    18.8,
-    67
-   ],
-   "ex": "C'est l'enhancer (séquence distale, cis). Les facteurs fixés dessus agissent à distance grâce au repliement de l'ADN.",
+   "ex": "Les facteurs régulateurs se fixent sur les séquences cis : distales (1, enhancer ou silencer) ou proximales (2, ≈ −200). Les deux zones sont justes.",
    "notes": [
-    "Carte des clics : on voit qui confond enhancer et séquences proximales."
+    "15 secondes. Deux zones justes : 1 (séquence distale) et 2 (séquences proximales). La boîte TATA (3) fixe TBP, un facteur général : piège."
+   ],
+   "seconds": 15,
+   "zones": [
+    [
+     5,
+     53,
+     18.8,
+     67
+    ],
+    [
+     46,
+     53,
+     55.5,
+     67
+    ]
    ]
   },
   {
@@ -332,18 +343,28 @@ window.COURSE = {
    "ex": "C'est H1, le « verrou » : elle stabilise l'ADN à l'extérieur de l'octamère.",
    "notes": [
     "Question rapide : 30 secondes, carte des clics, une phrase de correction."
-   ]
+   ],
+   "seconds": 10
   },
   {
    "part": 4,
    "kind": "number",
    "min": 2,
-   "title": "Un chiffre à retenir",
-   "q": "Combien de paires de bases d'ADN s'enroulent autour de l'octamère ?",
-   "good": 146,
-   "ex": "146 pb (1,65 tour). 200 pb, c'est l'écart moyen entre deux nucléosomes, ADN de liaison compris.",
+   "title": "Deux chiffres à retenir",
+   "ex": "146 pb s'enroulent autour de l'octamère (1,65 tour). 200 pb : c'est l'écart moyen d'un nucléosome au suivant, ADN de liaison compris (≈ 1 nucléosome / 200 pb).",
    "notes": [
-    "La confusion 146 / 200 se voit bien sur l'histogramme."
+    "20 secondes pour les deux. La confusion 146 / 200 se voit bien sur les deux histogrammes."
+   ],
+   "seconds": 20,
+   "qs": [
+    {
+     "q": "Combien de paires de bases d'ADN s'enroulent autour de l'octamère ?",
+     "good": 146
+    },
+    {
+     "q": "Tous les combien de paires de bases trouve-t-on un nucléosome (ADN de liaison compris) ?",
+     "good": 200
+    }
    ]
   },
   {
@@ -374,35 +395,17 @@ window.COURSE = {
   {
    "part": 5,
    "kind": "explain",
-   "min": 8,
+   "min": 7,
    "title": "Ouvrir et marquer la chromatine",
    "slides": [
     {
      "t": "La chromatine n'est pas figée",
-     "anim": "acetyl",
+     "anim": "remodelage",
+     "nocap": true,
+     "compact": true,
      "pts": [
       "L'ADN d'un nucléosome peut être <b>transitoirement dissocié</b> des histones",
       "Les histones portent des <b>modifications post-traductionnelles</b>, par exemple l'<b>acétylation</b> :",
-      {
-       "n": 1,
-       "k": 0,
-       "t": "Les lysines (K) des histones sont chargées <b>+</b>, l'ADN est chargé <b>−</b> : l'ADN est <b>fortement retenu</b>, le promoteur est inaccessible"
-      },
-      {
-       "n": 2,
-       "k": 1,
-       "t": "Une <b>HAT</b> (writer) <b>acétyle</b> les lysines : leurs charges + sont <b>neutralisées</b>, l'ADN se relâche, le promoteur devient <b>accessible</b>"
-      }
-     ],
-     "notes": [
-      "Schéma : insiste sur les charges. Lysines + / ADN − = attraction. Acétylation = charges neutralisées = ADN moins retenu."
-     ],
-     "nocap": true
-    },
-    {
-     "t": "Le remodelage",
-     "anim": "remodelage",
-     "pts": [
       {
        "n": 1,
        "k": 0,
@@ -425,9 +428,9 @@ window.COURSE = {
       }
      ],
      "notes": [
+      "Schéma : insiste sur les charges. Lysines + / ADN − = attraction. Acétylation = charges neutralisées = ADN moins retenu.",
       "Lien avec la partie 2 : ce sont les corégulateurs qui amènent ces activités."
-     ],
-     "nocap": true
+     ]
     },
     {
      "t": "Le code histone",
@@ -599,7 +602,8 @@ window.COURSE = {
    ],
    "notes": [
     "Rappel : ajouter un acétyle neutralise les charges + des lysines et relâche la fibre."
-   ]
+   ],
+   "seconds": 30
   },
   {
    "part": 5,
