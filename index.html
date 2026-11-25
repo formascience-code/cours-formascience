@@ -100,14 +100,41 @@ async function connect(c) {
 }
 
 /* ---------- Affichage ---------- */
+/* Réponse en cours (non envoyée) : validée quand le temps est écoulé ou quand le prof ferme la question */
+let pending = null, ctick = null;
+const ansKey = (st, k) => (st.kind === 'peer' ? k + (state.phase === 'r1' ? 'r1' : 'r2') : k);
+function flushPending() {
+  if (!pending) return; const p = pending; pending = null;
+  if (store.get(p.key)) return; const v = p.get(); if (!v) return;
+  store.set(p.key, v); B.submit(code, p.key, v).catch(() => {});
+}
 function render() {
   if (!state || !S) return;
   const st = S[state.step]; if (!st) return;
   const s2 = [state.step, state.phase, state.qi, state.until, state.sub, state.k].join('|');
   if (s2 === sig) return; sig = s2;
-  clearInterval(tick); tick = null;
+  flushPending();
+  clearInterval(tick); tick = null; clearInterval(ctick); ctick = null;
   document.getElementById('hd').textContent = C.parts[st.part];
-  V[st.kind](st, 's' + state.step);
+  const k = 's' + state.step, timed = state.until && isAnswering(st, state.phase), key = ansKey(st, k);
+  if (timed && B.now() >= state.until && !store.get(key)) { M.innerHTML = doneScreen('Temps écoulé', "Regarde l'écran"); return; }
+  V[st.kind](st, k);
+  if (timed && pending) chronoEtu(key);
+}
+function chronoEtu(key) {
+  const bar = document.createElement('div'); bar.style.cssText = 'position:sticky;top:0;z-index:3;display:flex;justify-content:center;padding:6px 0;background:var(--bg)';
+  const el = document.createElement('span'); el.className = 'chrono'; el.style.fontSize = '18px'; bar.appendChild(el); M.prepend(bar);
+  const up = () => {
+    if (!bar.isConnected && ctick) M.prepend(bar);
+    const left = Math.max(0, Math.ceil((state.until - B.now()) / 1000));
+    el.className = 'chrono ' + (left <= 10 ? 'hot' : left <= 20 ? 'warn' : ''); el.textContent = '⏱ ' + fmtSec(left);
+    if (left === 0) {
+      clearInterval(ctick); ctick = null; flashEnd();
+      const p = pending; pending = null; const v = p && p.get();
+      if (v && !store.get(p.key)) send(p.key, v); else M.innerHTML = doneScreen('Temps écoulé', "Regarde l'écran");
+    }
+  };
+  up(); ctick = setInterval(up, 250);
 }
 const V = {};
 V.join = () => { M.innerHTML = doneScreen('Tu es connecté·e', 'Les questions apparaîtront ici pendant le cours.'); };
@@ -129,9 +156,10 @@ V.poll = (st, k) => {
   if (ph === 'reveal') { M.innerHTML = mine ? `<div class="fb ${mine.i === st.good ? 'good' : 'bad'}">${mine.i === st.good ? 'Bonne réponse' : 'Pas tout à fait'} : ${L[st.good]}. ${esc(st.opts[st.good])}</div><p class="hint">${esc(st.ex)}</p>` : `<p class="hint">${esc(st.ex)}</p>`; return; }
   if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
   let pick = -1;
-  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.svg ? CASE_SVG[st.svg]() : ''}${st.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.fig ? FIGS[st.fig]() : st.svg ? CASE_SVG[st.svg]() : ''}${st.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(o)}</span></button>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
   M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { pick = +b.dataset.i; M.querySelectorAll('.opt').forEach((x) => x.classList.toggle('sel', x === b)); document.getElementById('go').disabled = false; });
   document.getElementById('go').onclick = () => send(k, { i: pick });
+  pending = { key: k, get: () => (pick >= 0 ? { i: pick } : null) };
 };
 V.tap = (st, k) => {
   const mine = store.get(k), ph = state.phase;
@@ -143,14 +171,18 @@ V.tap = (st, k) => {
   tb.onclick = (e) => { const r = tb.getBoundingClientRect(); me = { x: +((e.clientX - r.left) / r.width * 100).toFixed(1), y: +((e.clientY - r.top) / r.height * 100).toFixed(1) };
     tb.querySelectorAll('.pin').forEach((p) => p.remove()); tb.insertAdjacentHTML('beforeend', `<span class="pin me" style="left:${me.x}%;top:${me.y}%"></span>`); document.getElementById('go').disabled = false; };
   document.getElementById('go').onclick = () => send(k, me);
+  pending = { key: k, get: () => me };
 };
 V.number = (st, k) => {
-  const mine = store.get(k), ph = state.phase;
-  if (ph === 'reveal') { M.innerHTML = `${mine ? `<div class="fb ${mine.v === st.good ? 'good' : 'bad'}">Ta réponse : ${mine.v} · attendu : ${st.good}</div>` : ''}<p class="hint">${esc(st.ex)}</p>`; return; }
+  const mine = store.get(k), ph = state.phase, Q = numQs(st);
+  if (ph === 'reveal') { const mv = numVals(mine); M.innerHTML = `${mine ? Q.map((q, j) => `<div class="fb ${mv[j] === q.good ? 'good' : 'bad'}">${Q.length > 1 ? `${j + 1}. ` : ''}Ta réponse : ${Number.isFinite(mv[j]) ? mv[j] : '–'} · attendu : ${q.good}</div>`).join('') : ''}<p class="hint">${esc(st.ex)}</p>`; return; }
   if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
-  M.innerHTML = `<p class="q">${esc(st.q)}</p><label class="hint" for="nb">Un nombre entier</label><input id="nb" class="input" type="number" inputmode="numeric"><button class="send" id="go" disabled>Envoyer</button>`;
-  const nb = document.getElementById('nb'), go = document.getElementById('go');
-  nb.oninput = () => go.disabled = nb.value === ''; go.onclick = () => send(k, { v: Math.round(+nb.value) });
+  M.innerHTML = Q.map((q, j) => `<p class="q">${Q.length > 1 ? `${j + 1}. ` : ''}${esc(q.q)}</p><input id="nb${j}" class="input nbin" type="number" inputmode="numeric" placeholder="Un nombre entier">`).join('') + `<button class="send" id="go" disabled>Envoyer</button>`;
+  const ins = [...M.querySelectorAll('.nbin')], go = document.getElementById('go');
+  const val = () => ins.map((x) => (x.value === '' ? null : Math.round(+x.value)));
+  ins.forEach((x) => x.oninput = () => go.disabled = ins.some((y) => y.value === ''));
+  go.onclick = () => send(k, Q.length > 1 ? { vs: val() } : { v: val()[0] });
+  pending = { key: k, get: () => (ins.every((y) => y.value === '') ? null : Q.length > 1 ? { vs: val() } : { v: val()[0] }) };
 };
 V.match = (st, k) => {
   const mine = store.get(k), ph = state.phase;
@@ -161,6 +193,7 @@ V.match = (st, k) => {
   const sels = [...M.querySelectorAll('select')], go = document.getElementById('go');
   sels.forEach((x) => x.onchange = () => go.disabled = sels.some((y) => !y.value));
   go.onclick = () => send(k, { a: sels.map((x) => x.value) });
+  pending = { key: k, get: () => (sels.some((y) => y.value) ? { a: sels.map((x) => x.value) } : null) };
 };
 V.order = (st, k) => {
   const mine = store.get(k), ph = state.phase;
@@ -174,22 +207,24 @@ V.order = (st, k) => {
     document.getElementById('go').onclick = () => send(k, { o: ord });
   };
   draw();
+  pending = { key: k, get: () => ({ o: ord }) };
 };
 V.classify = (st, k) => {
-  const mine = store.get(k), ph = state.phase;
+  const mine = store.get(k), ph = state.phase, LB = st.labels || ['Active', 'Réprime'];
   if (ph === 'reveal') {
     const got = (i) => (mine && mine.c ? mine.c[i] : null);
     M.innerHTML = `<p class="q">Correction</p>` + st.items.map(([t, a, why], i) => { const g2 = got(i), ok = g2 === a;
-      return `<div class="fb ${mine ? (ok ? 'good' : 'bad') : ''}"><b>${esc(t)}</b> → ${a === 'A' ? 'active' : 'réprime'}${mine && !ok ? (g2 ? ' (tu avais mis l\'inverse)' : ' (pas de réponse)') : ''}${why ? `<br><span style="color:var(--ink);font-size:13px">${esc(why)}</span>` : ''}</div>`; }).join('')
+      return `<div class="fb ${mine ? (ok ? 'good' : 'bad') : ''}"><b>${esc(t)}</b> → ${a === 'A' ? LB[0] : LB[1]}${mine && !ok ? (g2 ? ' (tu avais mis l\'inverse)' : ' (pas de réponse)') : ''}${why ? `<br><span style="color:var(--ink);font-size:13px">${esc(why)}</span>` : ''}</div>`; }).join('')
       + (mine ? `<p class="hint">${st.items.filter(([, a], i) => got(i) === a).length} / ${st.items.length} justes</p>` : '');
     return;
   }
   if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponses envoyées' : 'Réponses fermées'); return; }
   const c = st.items.map(() => null), timed = st.seconds && state.until;
-  M.innerHTML = `${timed ? `<div class="eyebrow" style="position:sticky;top:0;z-index:2;background:var(--bg);padding:8px 0;font-size:14px">Temps restant : <span class="timer" id="tm"></span></div>` : ''}<p class="q">${esc(st.q)}</p>${st.items.map(([t], i) => `<div class="pair"><b>${esc(t)}</b><div class="seg2" data-i="${i}"><button data-v="A">Active</button><button data-v="R">Réprime</button></div></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  M.innerHTML = `${timed ? `<div class="eyebrow" style="position:sticky;top:0;z-index:2;background:var(--bg);padding:8px 0;font-size:14px">Temps restant : <span class="timer" id="tm"></span></div>` : ''}<p class="q">${esc(st.q)}</p>${st.items.map(([t], i) => `<div class="pair"><b>${esc(t)}</b><div class="seg2" data-i="${i}"><button data-v="A">${LB[0]}</button><button data-v="R">${LB[1]}</button></div></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
   M.querySelectorAll('.seg2').forEach((g2) => g2.querySelectorAll('button').forEach((b) => b.onclick = () => { c[+g2.dataset.i] = b.dataset.v; g2.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); document.getElementById('go').disabled = c.some((x) => !x); }));
   document.getElementById('go').onclick = () => send(k, { c: c.map((x) => x || '') });
-  if (timed) {
+  pending = { key: k, get: () => (c.some((x) => x) ? { c: c.map((x) => x || '') } : null) };
+  if (timed && st.seconds) {
     const up = () => { const t = Math.max(0, Math.ceil((state.until - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
       if (t <= 0) { clearInterval(tick); if (c.some((x) => x)) send(k, { c: c.map((x) => x || '') }); else M.innerHTML = doneScreen('Temps écoulé', 'La correction arrive à l\'écran.'); } };
     up(); tick = setInterval(up, 250);
@@ -205,6 +240,7 @@ V.peer = (st, k) => {
     M.innerHTML = `<span class="eyebrow">${label}</span><p class="q">${esc(st.q)}</p><p class="hint">Plusieurs réponses possibles.</p>${opts(set, false)}<button class="send" id="go">Envoyer</button>`;
     M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { const i = +b.dataset.i; set.has(i) ? set.delete(i) : set.add(i); b.classList.toggle('sel'); });
     document.getElementById('go').onclick = () => send(key, { s: [...set].sort().map((i) => L[i]).join('') });
+    pending = { key, get: () => (set.size ? { s: [...set].sort().map((i) => L[i]).join('') } : null) };
   };
   const toSet = (m) => m ? m.s.split('').map((c) => L.indexOf(c)) : [];
   if (ph === 'r1') { if (m1) M.innerHTML = doneScreen('1er vote envoyé', 'Attends la consigne.'); else vote('1er vote', k + 'r1', []); return; }

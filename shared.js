@@ -14,9 +14,22 @@ function loadCourse(id) {
     document.head.appendChild(s);
   });
 }
+/* Chrono de réponse : phases pendant lesquelles les étudiants répondent, et flash de fin */
+const ANSWER_PHASES = { poll: ['open'], tap: ['open'], number: ['open'], match: ['open'], order: ['open'], classify: ['open'], cloud: ['open'], peer: ['r1', 'r2'] };
+const isAnswering = (st, phase) => !!(ANSWER_PHASES[st.kind] || []).includes(phase);
+/* Durée du chrono : le revote (phase r2) a sa propre durée, plus courte */
+const chronoSec = (C, st, phase) => (phase === 'r2' && C.chrono_revote) || st.seconds || C.chrono || 0;
+function flashEnd() {
+  const f = document.createElement('div'); f.className = 'flash-end'; f.innerHTML = '<span>Temps écoulé !</span>';
+  document.body.appendChild(f); setTimeout(() => f.remove(), 2200);
+}
+const fmtSec = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-const inZone = (st, p) => { const [x1, y1, x2, y2] = st.zone; return p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2; };
+const inZone = (st, p) => (st.zones || [st.zone]).some(([x1, y1, x2, y2]) => p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2);
+/* « Un chiffre à retenir » : une ou plusieurs questions numériques */
+const numQs = (st) => st.qs || [{ q: st.q, good: st.good }];
+const numVals = (x) => (x && x.vs && typeof x.vs === 'object' ? x.vs : x && Number.isFinite(x.v) ? [x.v] : []); // Firebase peut rendre un tableau à trous sous forme d'objet
 
 /* Couleurs des schémas (fond blanc dans les deux thèmes) */
 const K = { dna: '#2f5e88', ink: '#2b3742', mute: '#6b7280', sage: '#a6ab99', ok: '#4f7a5a', ko: '#b5523b', honey: '#c2a05a', plum: '#3d2248' };
@@ -429,5 +442,6 @@ function renderTable(id) {
     return `<div class="tbl-wrap"><table class="tbl meth"><thead><tr><th></th>${METH.cols.map((x) => `<th>${x}</th>`).join('')}</tr></thead><tbody>${METH.rows.map(([n, r]) => `<tr class="${keep(n) ? 'keep' : 'off'}"><th>${nm[n]}${keep(n) ? '<span class="tag">à retenir</span>' : '<span class="tag">pas à retenir</span>'}</th>${r.map((v) => c(v, n)).join('')}</tr>`).join('')}</tbody></table></div>`;
   }
   const t = TABLES[id];
+  if (t.plain) return `<div class="tbl-wrap"><table class="tbl"><thead><tr>${t.head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${t.rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   return `<div class="tbl-wrap"><table class="tbl"><thead><tr>${t.head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${t.rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${PILL[r[2]]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table></div>`;
 }

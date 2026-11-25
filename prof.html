@@ -68,6 +68,19 @@ footer .info{color:var(--muted);font-variant-numeric:tabular-nums}
 .crs{display:flex;flex-direction:column;gap:.15rem;padding:.8rem 1rem;border:1px solid var(--line);border-radius:.7rem;background:var(--surface);color:var(--ink);text-decoration:none}
 .crs:hover{border-color:var(--sage)}
 .crs span{font-size:.8rem;color:var(--muted)}
+.pad{background:#fff;border:2px solid var(--line);border-radius:.8rem;overflow:hidden;display:flex;flex-direction:column;min-height:42vh}
+.pad-tools{display:flex;gap:.5rem;align-items:center;padding:.45rem .6rem;border-bottom:1px solid var(--line);background:var(--surface)}
+.pad-tools .sp{flex:1}
+.pad-tools button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:.5rem;padding:.35rem .7rem;font-size:.8rem;display:flex;gap:.35rem;align-items:center}
+.pad-tools button span{width:.8rem;height:.8rem;border-radius:50%;display:inline-block}
+.pad-tools button.on{border-color:var(--plum);background:var(--plum-soft);font-weight:600}
+#padc{width:100%;flex:1;min-height:0;touch-action:none;cursor:crosshair;display:block}
+#padhost{padding:0 2.4rem .6rem;flex:1;min-height:28vh;display:flex}
+#padhost:empty{display:none}
+.pad{flex:1;min-height:0}
+#app.withpad main{flex:0 1 auto;padding-bottom:.4rem}
+.pts.compact{font-size:1.05rem;gap:.45em}
+.pts.compact li.stp{padding:.25em .45em}
 </style>
 </head>
 <body>
@@ -101,7 +114,7 @@ async function boot() {
   if (prev && (await B.sessionHost(prev)) !== uid) prev = null;
   app.innerHTML = `<div class="start"><img src="img/logo.png" alt="formaScience"><h1 class="title">${esc(C.title)}</h1><p>${esc(C.subtitle)} · ${S.length} étapes · ${S.reduce((a, s) => a + s.min, 0)} min</p>
     <button id="new">Démarrer une nouvelle séance</button>${prev ? `<button class="alt" id="resume">Reprendre la séance ${prev}</button>` : ''}
-    <p class="wait">Deux boutons : « Avant → » avance d'un pas, « ← Retour » recule d'un pas. Clavier ou télécommande : → avancer · ← reculer · N notes du prof. Sur tablette : glisser le doigt vers la gauche pour avancer, vers la droite pour reculer.</p></div>`;
+    <p class="wait">${C.chrono ? `Chrono : ${C.chrono} s pour chaque question${C.chrono_revote ? ` (${C.chrono_revote} s pour le revote)` : ''}, puis flash « Temps écoulé ! » sur ton écran et les téléphones ; les réponses en cours sont validées. ` : ''}Deux boutons : « Avant → » avance d'un pas, « ← Retour » recule d'un pas. Clavier ou télécommande : → avancer · ← reculer · N notes du prof. Sur tablette : glisser le doigt vers la gauche pour avancer, vers la droite pour reculer.</p></div>`;
   document.getElementById('new').onclick = async () => {
     if (prev) await B.clear(prev);
     code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
@@ -111,7 +124,7 @@ async function boot() {
 }
 function start() {
   try { localStorage.setItem('prof-code-' + COURSE_ID, code); } catch (e) {}
-  app.innerHTML = `<nav class="rail" id="rail"></nav><main id="main"></main><div class="notes" id="notes" hidden></div>
+  app.innerHTML = `<nav class="rail" id="rail"></nav><main id="main"></main><div id="padhost"></div><div class="notes" id="notes" hidden></div>
   <footer><button id="prev" title="Reculer d'un pas (touche ←)">← Retour</button><button class="primary" id="fwd" title="Avancer d'un pas (touche →)">Avant →</button>
   <span class="info" id="info"></span><span class="sp"></span><span class="info">Séance <b>${code}</b> · <span id="cnt">0</span> connectés</span>
   <button id="nt">Notes (N)</button><button id="stop">Terminer la séance</button></footer>`;
@@ -168,10 +181,15 @@ function goStep(i, atEnd) {
   const st = S[i], p = { step: i, phase: initPhase(st.kind), qi: 0, sub: 0, k: 0, until: null, qStart: null, board: null };
   if (atEnd && st.kind === 'explain') { const n = st.slides.length - 1, last = st.slides[n]; p.sub = n; p.k = last.anim ? ANIMS[last.anim].caps.length - 1 : 0; }
   if (atEnd && PHASES[st.kind]) p.phase = PHASES[st.kind][PHASES[st.kind].length - 1];
-  if (st.seconds && p.phase === 'open') p.until = B.now() + st.seconds * 1000;
+  if (chronoSec(C, st, p.phase) && isAnswering(st, p.phase)) p.until = B.now() + chronoSec(C, st, p.phase) * 1000;
   B.setState(code, p);
 }
-const set = (p) => B.setState(code, p);
+/* Chaque fois qu'on ouvre une phase de réponse, le chrono repart ; sinon il s'arrête */
+const set = (p) => {
+  const st = S[state.step];
+  if (p.phase && !('until' in p)) p.until = chronoSec(C, st, p.phase) && isAnswering(st, p.phase) ? B.now() + chronoSec(C, st, p.phase) * 1000 : null;
+  return B.setState(code, p);
+};
 
 /* ---------- Abonnements aux réponses ---------- */
 function neededKeys() {
@@ -202,10 +220,31 @@ function render() {
   const sn = st.kind === 'explain' ? (st.slides[state.sub || 0].notes || []) : [];
   n.innerHTML = `<h3>Notes du prof · ${st.min} min</h3><ul>${[...sn, ...(st.notes || [])].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
   clearInterval(tick); tick = null;
+  document.getElementById('main').className = C.style || '';
   const a = R[st.kind](st, document.getElementById('main'));
   nextAct = a ? a[1] : null;
+  chronoProf(st);
+  padSync(st.draw ? 's' + i : null);
   const f = document.getElementById('fwd'); f.title = a ? a[0] + ' (touche →)' : (i < S.length - 1 ? 'Étape suivante : ' + S[i + 1].title : 'Fin du cours');
   f.disabled = !a && i === S.length - 1;
+}
+/* Chrono affiché sur l'écran prof + flash à la fin */
+let ctick = null, flashed = '';
+function chronoProf(st) {
+  clearInterval(ctick); ctick = null;
+  const old = document.getElementById('chrono'); if (old) old.remove();
+  if (!state.until || !isAnswering(st, state.phase)) return;
+  const m = document.getElementById('main'), t = m.querySelector('h1.title');
+  const el = document.createElement('div'); el.id = 'chrono'; el.style.cssText = 'position:sticky;top:0;z-index:5;align-self:flex-end;margin-bottom:-2.6rem;font-size:1.6rem';
+  m.insertBefore(el, m.firstChild);
+  const key = [state.step, state.phase, state.until].join('|');
+  const up = () => {
+    const left = Math.max(0, Math.ceil((state.until - B.now()) / 1000));
+    el.className = 'chrono ' + (left === 0 ? 'done' : left <= 10 ? 'hot' : left <= 20 ? 'warn' : '');
+    el.textContent = left === 0 ? 'Temps écoulé' : '⏱ ' + fmtSec(left);
+    if (left === 0) { clearInterval(ctick); ctick = null; if (flashed !== key && state.until > B.now() - 3000) { flashed = key; flashEnd(); } else flashed = key; }
+  };
+  up(); if (B.now() < state.until) ctick = setInterval(up, 250);
 }
 const head = (st, eyebrow) => `<span class="eyebrow">${esc(eyebrow || C.parts[st.part])}</span><h1 class="title">${esc(st.title)}</h1>`;
 const nAns = (k) => `<span class="wait"><b class="counter">${vals(k).length}</b> réponse(s) · <span id="cnt2">${count}</span> connectés</span>`;
@@ -233,11 +272,11 @@ R.explain = (st, m) => {
     const A = ANIMS[sl.anim], svg = A.draw(k), vb = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), ratio = vb ? vb[1] / vb[2] : 2.4;
     const box = `<div class="animbox" style="max-width:calc((100dvh - ${sl.nocap ? 13 : 17}rem) * ${ratio.toFixed(2)})">${svg}${sl.nocap ? '' : `<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div>`}</div>`;
     const li = (p) => (typeof p === 'string' ? `<li>${p}</li>` : k < p.k ? '' : `<li class="stp ${p.k === k ? 'cur' : 'past'}"><span class="num">${p.n}</span><span>${p.t}</span></li>`);
-    body = sl.pts ? `<div class="slide" style="grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr)"><ul class="pts">${sl.pts.map(li).join('')}</ul>${box}</div>` : box;
+    body = sl.pts ? `<div class="slide" style="grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr)"><ul class="pts${sl.compact ? ' compact' : ''}">${sl.pts.map(li).join('')}</ul>${box}</div>` : box;
   } else if (sl.table) {
     body = `${renderTable(sl.table)}${sl.memo ? `<div class="memo">${sl.memo.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : ''}`;
   } else {
-    body = `<div class="slide ${sl.img ? '' : 'solo'}"><ul class="pts">${sl.pts.map((p) => `<li>${p}</li>`).join('')}</ul>${sl.img ? `<img class="fig" src="${IMGBASE}${sl.img}.png" alt="Schéma">` : ''}</div>${sl.fig ? `<div class="figsvg">${FIGS[sl.fig]()}</div>` : ''}`;
+    body = `<div class="slide ${sl.img || sl.side ? '' : 'solo'}">${sl.pts ? `<ul class="pts">${sl.pts.map((p) => `<li>${p}</li>`).join('')}</ul>` : ''}${sl.img ? `<img class="fig" src="${IMGBASE}${sl.img}.png" alt="Schéma">` : ''}${sl.fig && sl.side ? `<div class="figsvg">${FIGS[sl.fig]()}</div>` : ''}</div>${sl.fig && !sl.side ? `<div class="figsvg">${FIGS[sl.fig]()}</div>` : ''}`;
   }
   m.innerHTML = `<span class="eyebrow">${esc(C.parts[st.part])} · ${pos}</span><h1 class="title">${esc(sl.t)}</h1>${body}`;
   if (sl.anim && k < ANIMS[sl.anim].caps.length - 1) return ['Animation : étape suivante', () => set({ k: k + 1 })];
@@ -254,29 +293,66 @@ R.cloud = (st, m) => {
 R.poll = (st, m) => {
   const k = 's' + state.step, v = vals(k), ph = state.phase, cnt = st.opts.map((_, i) => v.filter((x) => x.i === i).length), tot = Math.max(1, v.length);
   let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
-  const fig = st.svg ? `<div style="max-width:min(100%,calc((100vh - 22rem) * 3.1))">${CASE_SVG[st.svg]()}</div>` : st.img ? `<img class="fig" src="${IMGBASE}${st.img}.png" alt="" style="max-width:40rem">` : '';
-  if (ph === 'open') { m.innerHTML = h + fig + nAns(k); return ['Afficher les résultats', () => set({ phase: 'results' })]; }
-  h += `<div class="bars">${st.opts.map((o, i) => { const p = Math.round(cnt[i] / tot * 100); return `<div class="bar ${ph === 'reveal' && i === st.good ? 'good' : ''}"><span class="k">${L[i]}</span><div><div class="txt">${esc(o)}</div><div class="track"><div class="fill" style="width:${p}%"></div></div></div><span class="pct">${p} %</span></div>`; }).join('')}</div>${nAns(k)}`;
-  if (ph === 'results') { m.innerHTML = h; return ['Afficher la réponse', () => set({ phase: 'reveal' })]; }
-  m.innerHTML = h + `<p class="correction"><b>Correction.</b> ${esc(st.ex)}</p>`; return null;
+  const fig = st.fig ? `<div class="figsvg">${FIGS[st.fig]()}</div>` : st.svg ? `<div style="max-width:min(100%,calc((100vh - 22rem) * 3.1))">${CASE_SVG[st.svg]()}</div>` : st.img ? `<img class="fig" src="${IMGBASE}${st.img}.png" alt="" style="max-width:40rem">` : '';
+  const pad = '';
+  const out = (html, act) => { m.innerHTML = html; return act; };
+  if (ph === 'open') return out(h + fig + `<div class="bars">${st.opts.map((o, i) => `<div class="bar"><span class="k">${L[i]}</span><div><div class="txt">${esc(o)}</div></div><span class="pct"></span></div>`).join('')}</div>` + nAns(k) + pad, ['Afficher les résultats', () => set({ phase: 'results' })]);
+  h += fig + `<div class="bars">${st.opts.map((o, i) => { const p = Math.round(cnt[i] / tot * 100); return `<div class="bar ${ph === 'reveal' && i === st.good ? 'good' : ''}"><span class="k">${L[i]}</span><div><div class="txt">${esc(o)}</div><div class="track"><div class="fill" style="width:${p}%"></div></div></div><span class="pct">${p} %</span></div>`; }).join('')}</div>${nAns(k)}`;
+  if (ph === 'results') return out(h + pad, ['Afficher la réponse', () => set({ phase: 'reveal' })]);
+  return out(h + `<p class="correction"><b>Correction.</b> ${esc(st.ex)}</p>` + pad, null);
 };
+/* ---------- Zone de dessin (stylet, doigt ou souris) : reste sur l'écran du prof ---------- */
+const PAD = { key: null, strokes: [], color: '#2b3742', erase: false };
+function padHTML() {
+  const cols = [['#2b3742', 'Noir'], ['#b5523b', 'Rouge'], ['#2f5e88', 'Bleu']];
+  return `<div class="pad"><div class="pad-tools">${cols.map(([c, n]) => `<button data-c="${c}" class="${!PAD.erase && PAD.color === c ? 'on' : ''}"><span style="background:${c}"></span>${n}</button>`).join('')}<button data-e="1" class="${PAD.erase ? 'on' : ''}">Gomme</button><span class="sp"></span><button data-x="1">Tout effacer</button></div><canvas id="padc"></canvas></div>`;
+}
+/* La zone de dessin vit hors de <main> : les nouvelles réponses ne l'effacent pas */
+function padSync(key) {
+  const host = document.getElementById('padhost'); if (!host) return;
+  document.getElementById('app').classList.toggle('withpad', !!key);
+  if (!key) { if (host.innerHTML) host.innerHTML = ''; PAD.key = null; if (PAD.ro) { PAD.ro.disconnect(); PAD.ro = null; } return; }
+  if (PAD.key === key && host.innerHTML) return;
+  PAD.strokes = []; host.innerHTML = padHTML(); padInit(key);
+}
+function padInit(key) {
+  PAD.key = key;
+  const c = document.getElementById('padc'); if (!c) return;
+  const ctx = c.getContext('2d');
+  const line = (st, from) => { ctx.strokeStyle = st.c; ctx.lineWidth = st.w; ctx.beginPath(); const p = st.p; ctx.moveTo(p[from][0], p[from][1]); for (let i = from + 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]); if (p.length === 1) ctx.lineTo(p[0][0] + 0.1, p[0][1]); ctx.stroke(); };
+  // la taille du carré suit l'espace libre : on redessine tout à chaque changement
+  const fit = () => { const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; if (!r.width || !r.height) return; c.width = r.width * dpr; c.height = r.height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; PAD.strokes.forEach((st) => line(st, 0)); };
+  fit(); if (PAD.ro) PAD.ro.disconnect(); PAD.ro = new ResizeObserver(fit); PAD.ro.observe(c);
+  let cur = null;
+  const pos = (e) => { const b = c.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  c.onpointerdown = (e) => { e.preventDefault(); c.setPointerCapture(e.pointerId); cur = { c: PAD.erase ? '#ffffff' : PAD.color, w: PAD.erase ? 26 : (e.pointerType === 'pen' ? 3 : 4), p: [pos(e)] }; PAD.strokes.push(cur); line(cur, 0); };
+  c.onpointermove = (e) => { if (!cur) return; cur.p.push(pos(e)); line(cur, cur.p.length - 2); };
+  c.onpointerup = c.onpointercancel = () => { cur = null; };
+  ['touchstart', 'touchmove', 'touchend'].forEach((t) => c.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
+  const box = c.parentElement;
+  box.querySelectorAll('[data-c]').forEach((bt) => bt.onclick = () => { PAD.color = bt.dataset.c; PAD.erase = false; box.querySelectorAll('.pad-tools button').forEach((x) => x.classList.toggle('on', x === bt)); });
+  box.querySelector('[data-e]').onclick = (e) => { PAD.erase = true; box.querySelectorAll('.pad-tools button').forEach((x) => x.classList.toggle('on', x === e.currentTarget)); };
+  box.querySelector('[data-x]').onclick = () => { PAD.strokes = []; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height); ctx.restore(); };
+}
 R.tap = (st, m) => {
-  const k = 's' + state.step, v = vals(k), ph = state.phase, [x1, y1, x2, y2] = st.zone;
+  const k = 's' + state.step, v = vals(k), ph = state.phase;
   const pins = ph === 'open' ? '' : v.map((p) => `<span class="pin" style="left:${p.x}%;top:${p.y}%"></span>`).join('');
-  const zone = ph === 'reveal' ? `<div class="zone" style="left:${x1}%;top:${y1}%;width:${x2 - x1}%;height:${y2 - y1}%"></div>` : '';
+  const zone = ph === 'reveal' ? (st.zones || [st.zone]).map(([x1, y1, x2, y2]) => `<div class="zone" style="left:${x1}%;top:${y1}%;width:${x2 - x1}%;height:${y2 - y1}%"></div>`).join('') : '';
   const ok = v.filter((p) => inZone(st, p)).length;
-  m.innerHTML = `${head(st)}<p class="q">${esc(st.q)}</p><div class="tapbox" style="max-width:62rem"><img src="${IMGBASE}${st.img}.png" alt="Schéma">${pins}${zone}</div>${nAns(k)}${ph === 'reveal' ? `<p class="correction"><b>Correction.</b> ${esc(st.ex)} <b>${pct(ok, v.length)} %</b> ont touché la bonne zone.</p>` : ''}`;
+  m.innerHTML = `${head(st)}<p class="q">${esc(st.q)}</p><div class="tapbox" style="max-width:62rem"><img src="${IMGBASE}${st.img}.png" alt="Schéma">${pins}${zone}</div>${nAns(k)}${ph === 'reveal' ? `<p class="correction"><b>Correction.</b> ${esc(st.ex)} <b>${pct(ok, v.length)} %</b> ont touché une bonne zone.</p>` : ''}`;
   if (ph === 'open') return ['Afficher les clics', () => set({ phase: 'results' })];
   if (ph === 'results') return ['Afficher la zone juste', () => set({ phase: 'reveal' })];
   return null;
 };
 R.number = (st, m) => {
-  const k = 's' + state.step, v = vals(k), ph = state.phase, c = {};
-  v.forEach((x) => { if (Number.isFinite(x.v)) c[x.v] = (c[x.v] || 0) + 1; });
-  const e = Object.entries(c).map(([a, b]) => [+a, b]).sort((a, b) => a[0] - b[0]).slice(0, 14), mx = Math.max(1, ...e.map((x) => x[1]));
-  let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
-  if (ph === 'open') { m.innerHTML = h + nAns(k); return ['Afficher les réponses', () => set({ phase: 'results' })]; }
-  h += `<div class="histo">${e.map(([val, n]) => `<div class="col ${ph === 'reveal' && val === st.good ? 'good' : ''}"><span class="n">${n}</span><div class="b" style="height:${n / mx * 100}%"></div><span class="v">${val}</span></div>`).join('')}</div>${nAns(k)}`;
+  const k = 's' + state.step, v = vals(k), ph = state.phase, Q = numQs(st);
+  let h = `${head(st)}${Q.length === 1 ? `<p class="q">${esc(Q[0].q)}</p>` : ''}`;
+  if (ph === 'open') { m.innerHTML = h + (Q.length > 1 ? `<div class="bars">${Q.map((q, j) => `<div class="bar"><span class="k">${j + 1}</span><div><div class="txt">${esc(q.q)}</div></div><span class="pct"></span></div>`).join('')}</div>` : '') + nAns(k); return ['Afficher les réponses', () => set({ phase: 'results' })]; }
+  const histo = (j) => { const c = {}; v.forEach((x) => { const val = numVals(x)[j]; if (Number.isFinite(val)) c[val] = (c[val] || 0) + 1; });
+    const e = Object.entries(c).map(([a, b]) => [+a, b]).sort((a, b) => a[0] - b[0]).slice(0, 14), mx = Math.max(1, ...e.map((x) => x[1]));
+    return `<div class="histo">${e.map(([val, n]) => `<div class="col ${ph === 'reveal' && val === Q[j].good ? 'good' : ''}"><span class="n">${n}</span><div class="b" style="height:${n / mx * 100}%"></div><span class="v">${val}</span></div>`).join('')}</div>`; };
+  h += Q.length === 1 ? histo(0) : `<div class="cols" style="align-items:start">${Q.map((q, j) => `<div><p class="q" style="font-size:1rem"><b>${j + 1}.</b> ${esc(q.q)}${ph === 'reveal' ? ` <b style="color:var(--ok)">→ ${q.good}</b>` : ''}</p>${histo(j)}</div>`).join('')}</div>`;
+  h += nAns(k);
   if (ph === 'results') { m.innerHTML = h; return ['Afficher la réponse', () => set({ phase: 'reveal' })]; }
   m.innerHTML = h + `<p class="correction"><b>Correction.</b> ${esc(st.ex)}</p>`; return null;
 };
@@ -290,16 +366,16 @@ R.match = (st, m) => {
 R.order = (st, m) => {
   const k = 's' + state.step, v = vals(k), ph = state.phase;
   let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
-  if (ph === 'open') { m.innerHTML = h + nAns(k); return ['Afficher le bon ordre', () => set({ phase: 'reveal' })]; }
+  if (ph === 'open') { m.innerHTML = h + `<div class="bars">${(st.start || st.items.map((_, i) => i)).map((j) => `<div class="bar"><span class="k">•</span><div><div class="txt">${esc(st.items[j])}</div></div><span class="pct"></span></div>`).join('')}</div>` + nAns(k); return ['Afficher le bon ordre', () => set({ phase: 'reveal' })]; }
   m.innerHTML = h + `<div class="bars">${st.items.map((t, i) => { const r = pct(v.filter((x) => x.o && x.o[i] === i).length, v.length); return `<div class="bar good"><span class="k">${i + 1}</span><div><div class="txt">${esc(t)}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`; }).join('')}</div><p class="wait">% d'étudiants qui ont mis chaque étape à la bonne place · ${v.length} réponse(s)</p>`;
   return null;
 };
 R.classify = (st, m) => {
-  const k = 's' + state.step, v = vals(k), ph = state.phase;
+  const k = 's' + state.step, v = vals(k), ph = state.phase, LB = st.labels || ['Active', 'Réprime'];
   let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
   if (ph === 'open') {
     const timed = st.seconds && state.until;
-    const list = st.table ? `<div class="cgrid">${st.items.map(([t]) => `<div class="ccard"><div class="t"><span>${esc(t)}</span></div><div class="cbtns"><div class="cbtn">Active</div><div class="cbtn">Réprime</div></div></div>`).join('')}</div>` : `<div class="memo">${st.items.map(([t]) => `<span>${esc(t)}</span>`).join('')}</div>`;
+    const list = st.table ? `<div class="cgrid">${st.items.map(([t]) => `<div class="ccard"><div class="t"><span>${esc(t)}</span></div><div class="cbtns"><div class="cbtn">${LB[0]}</div><div class="cbtn">${LB[1]}</div></div></div>`).join('')}</div>` : `<div class="memo">${st.items.map(([t]) => `<span>${esc(t)}</span>`).join('')}</div>`;
     m.innerHTML = h + (timed ? `<div class="timer" style="font-size:3rem" id="tm"></div>` : '') + list + nAns(k);
     if (timed) {
       const up = () => { const t = Math.max(0, Math.ceil((state.until - B.now()) / 1000)); const e = document.getElementById('tm'); if (e) e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; if (t <= 0) { clearInterval(tick); if (state.phase === 'open' && S[state.step] === st) set({ phase: 'reveal' }); } };
@@ -308,9 +384,9 @@ R.classify = (st, m) => {
     return ['Afficher la correction', () => set({ phase: 'reveal' })];
   }
   const ok = (i, a) => pct(v.filter((x) => x.c && x.c[i] === a).length, v.length);
-  const pill = (a) => (a === 'A' ? '<span class="pill act">Active</span>' : '<span class="pill rep">Réprime</span>');
+  const pill = (a) => (a === 'A' ? `<span class="pill act">${LB[0]}</span>` : `<span class="pill rep">${LB[1]}</span>`);
   if (st.table) {
-    m.innerHTML = h + `<div class="cgrid">${st.items.map(([t, a, why], i) => `<div class="ccard"><div class="t"><span>${esc(t)}</span><span class="p" style="color:${ok(i, a) >= 70 ? 'var(--ok)' : 'var(--ko)'}">${ok(i, a)} %</span></div><div class="cbtns"><div class="cbtn ${a === 'A' ? 'okA' : 'dim'}">Active</div><div class="cbtn ${a === 'R' ? 'okR' : 'dim'}">Réprime</div></div>${why ? `<div class="why">${esc(why)}</div>` : ''}</div>`).join('')}</div><p class="wait">% de bonnes réponses par situation · ${v.length} réponse(s)</p>`;
+    m.innerHTML = h + `<div class="cgrid">${st.items.map(([t, a, why], i) => `<div class="ccard"><div class="t"><span>${esc(t)}</span><span class="p" style="color:${ok(i, a) >= 70 ? 'var(--ok)' : 'var(--ko)'}">${ok(i, a)} %</span></div><div class="cbtns"><div class="cbtn ${a === 'A' ? 'okA' : 'dim'}">${LB[0]}</div><div class="cbtn ${a === 'R' ? 'okR' : 'dim'}">${LB[1]}</div></div>${why ? `<div class="why">${esc(why)}</div>` : ''}</div>`).join('')}</div><p class="wait">% de bonnes réponses par situation · ${v.length} réponse(s)</p>`;
     return null;
     m.innerHTML = h + `<div class="tbl-wrap"><table class="tbl cls"><thead><tr><th>Situation</th><th>Effet</th><th>Pourquoi</th><th style="text-align:right">Justes</th></tr></thead><tbody>${st.items.map(([t, a, why], i) => `<tr><td><b>${esc(t)}</b></td><td>${pill(a)}</td><td class="why">${esc(why || '')}</td><td class="p" style="color:${ok(i, a) >= 70 ? 'var(--ok)' : 'var(--ko)'}">${ok(i, a)} %</td></tr>`).join('')}</tbody></table></div><p class="wait">% de bonnes réponses par situation · ${v.length} réponse(s)</p>`;
     return null;
@@ -320,7 +396,7 @@ R.classify = (st, m) => {
   return null;
 };
 R.thanks = (st, m) => {
-  m.innerHTML = `<h1 class="title" style="text-align:center;font-size:2.4rem">Merci pour votre attention !</h1><div class="figsvg">${FIGS.merci()}</div><p class="q" style="text-align:center;color:var(--muted);letter-spacing:.08em;font-weight:700">BONNES RÉVISIONS</p>`;
+  m.innerHTML = `<h1 class="title" style="text-align:center;font-size:2.4rem">Merci pour votre attention !</h1><div class="figsvg">${FIGS[st.fig || 'merci']()}</div><p class="q" style="text-align:center;color:var(--muted);letter-spacing:.08em;font-weight:700">BONNES RÉVISIONS</p>`;
   return null;
 };
 R.peer = (st, m) => {
@@ -370,7 +446,7 @@ R.end = (st, m) => {
       let res = null, label = s.title;
       if (s.kind === 'poll') { res = r(k, (x) => x.i === s.good); label = s.q; }
       if (s.kind === 'tap') { res = r(k, (x) => inZone(s, x)); label = s.q; }
-      if (s.kind === 'number') { res = r(k, (x) => x.v === s.good); label = s.q; }
+      if (s.kind === 'number') { const Q = numQs(s); res = r(k, (x) => Q.every((q, j) => numVals(x)[j] === q.good)); label = s.title; }
       if (s.kind === 'match') { res = r(k, (x) => x.a && x.a.every((y, j) => y === s.pairs[j][1])); label = s.q; }
       if (s.kind === 'order') { res = r(k, (x) => x.o && x.o.every((y, j) => y === j)); label = s.q; }
       if (s.kind === 'classify') { res = r(k, (x) => x.c && x.c.every((y, j) => y === s.items[j][1])); label = s.title + ' (tout juste)'; }

@@ -103,3 +103,36 @@ img.fig{display:block;max-width:100%;height:auto;background:#fff;border-radius:1
 .figsvg .anim-svg{max-height:calc(100dvh - 20rem);width:auto;max-width:100%;margin:0 auto}
 .tbl.cls td.why{color:var(--muted);font-size:.92em}
 .tbl.cls td.p{font-variant-numeric:tabular-nums;font-weight:700;text-align:right;white-space:nowrap}
+
+/* Plan de cours et diapos « cartes » (cours avec style: 'cards') */
+.plan{display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;font-size:1.3rem;margin-top:1rem}
+.plan-b{border-radius:1rem;padding:1.3rem 1.6rem;border:2px solid var(--line);background:var(--surface)}
+.plan-b.on{border-color:var(--honey);box-shadow:0 10px 30px -18px rgba(0,0,0,.4)}
+.plan-b.off{opacity:.4}
+.plan-t{font-weight:700;color:var(--sage-ink);font-size:1.25em;margin-bottom:.6rem}
+.plan-s{padding:.35rem 0 .35rem 1rem;border-left:3px solid var(--sage);margin:.25rem 0}
+main.cards .pts{list-style:none;padding:0;gap:.75rem}
+main.cards .pts li{background:var(--surface);border-left:.4rem solid var(--sage);border-radius:.6rem;padding:.6rem 1rem;box-shadow:0 2px 10px -6px rgba(0,0,0,.25)}
+main.cards .pts li:nth-child(3n+2){border-left-color:var(--honey)}
+main.cards .pts li:nth-child(3n){border-left-color:var(--plum)}
+main.cards .pts b{color:var(--ink)}
+main.cards .pts mark{background:none;color:var(--honey);font-weight:700}
+main.cards .slide.solo:not(:has(+ .figsvg)) .pts{font-size:1.5rem;gap:1.1rem;margin-top:.6rem}
+main.cards .slide.solo:not(:has(+ .figsvg)) .pts li{padding:1rem 1.3rem}
+main.cards .tbl{font-size:1.2rem}
+main.cards .tbl td,main.cards .tbl th{padding:.7em .9em}
+main.cards .memo span{font-size:1.05rem;padding:.45em .9em}
+main.cards .bars{font-size:1.3rem;gap:.7rem}
+main.cards .bar .k{font-size:1rem}
+main.cards .q{font-size:1.35rem}
+main.cards .bars .ex{font-size:.8em}
+main.cards .bar .txt{font-size:1.25rem}
+main.cards .slide:not(.solo) .pts{font-size:1.3rem}
+
+/* Chrono et flash de fin de temps */
+.flash-end{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;pointer-events:none;background:#b5523b;animation:flashEnd 2.1s ease-out forwards}
+.flash-end span{color:#fff;font-weight:700;font-size:clamp(2.4rem,9vw,7rem);letter-spacing:.02em;text-shadow:0 4px 24px rgba(0,0,0,.25)}
+@keyframes flashEnd{0%{opacity:0}8%{opacity:.96}22%{opacity:.25}36%{opacity:.96}50%{opacity:.25}64%{opacity:.96}85%{opacity:.9}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.flash-end{animation:flashEndR 2.1s linear forwards}@keyframes flashEndR{0%,85%{opacity:.95}100%{opacity:0}}}
+.chrono{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-variant-numeric:tabular-nums;border-radius:99px;padding:.25em .9em;background:var(--plum);color:#fff}
+.chrono.warn{background:#c2a05a}.chrono.hot{background:#b5523b}.chrono.done{background:#6b7280}
