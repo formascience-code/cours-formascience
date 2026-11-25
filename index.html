@@ -186,10 +186,10 @@ V.number = (st, k) => {
 };
 V.match = (st, k) => {
   const mine = store.get(k), ph = state.phase;
-  if (ph === 'reveal') { M.innerHTML = st.pairs.map((p, i) => `<div class="fb ${mine && mine.a[i] === p[1] ? 'good' : 'bad'}"><b>${esc(p[0])}</b> → ${esc(p[1])}</div>`).join('') + (mine ? `<p class="hint">${mine.a.filter((x, i) => x === st.pairs[i][1]).length} / ${st.pairs.length} associations justes</p>` : ''); return; }
+  if (ph === 'reveal') { M.innerHTML = st.pairs.map((p, i) => `<div class="fb ${mine && mine.a[i] === p[1] ? 'good' : 'bad'}"><b>${esc(p[0])}</b> → ${esc(p[1])}</div>`).join('') + (mine ? `<p class="hint">${mine.a.filter((x, i) => x === st.pairs[i][1]).length} / ${st.pairs.length} associations justes</p>` : '') + (st.ex ? `<p class="hint">${esc(st.ex)}</p>` : ''); return; }
   if (mine || ph !== 'open') { M.innerHTML = doneScreen(mine ? 'Réponse envoyée' : 'Réponses fermées'); return; }
-  const rights = st.pairs.map((p) => p[1]), sh = rights.map((_, i) => rights[(i + 1) % rights.length]);
-  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.pairs.map((p, i) => `<div class="pair"><label for="m${i}"><b>${esc(p[0])}</b></label><select id="m${i}"><option value="">Choisir…</option>${sh.map((r) => `<option>${esc(r)}</option>`).join('')}</select></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
+  const rights = st.pairs.map((p) => p[1]), sh = st.options || rights.map((_, i) => rights[(i + 1) % rights.length]);
+  M.innerHTML = `<p class="q">${esc(st.q)}</p>${st.fig ? FIGS[st.fig]() : ''}${st.pairs.map((p, i) => `<div class="pair"><label for="m${i}"><b>${esc(p[0])}</b></label><select id="m${i}"><option value="">Choisir…</option>${sh.map((r) => `<option>${esc(r)}</option>`).join('')}</select></div>`).join('')}<button class="send" id="go" disabled>Envoyer</button>`;
   const sels = [...M.querySelectorAll('select')], go = document.getElementById('go');
   sels.forEach((x) => x.onchange = () => go.disabled = sels.some((y) => !y.value));
   go.onclick = () => send(k, { a: sels.map((x) => x.value) });
@@ -237,7 +237,7 @@ V.peer = (st, k) => {
   const opts = (set, rev) => st.items.map((t, i) => { const g = st.ok.includes(L[i]); return `<button class="opt ${set.has(i) ? 'sel' : ''} ${rev ? (g ? 'good' : set.has(i) ? 'bad' : '') : ''}" data-i="${i}"><span class="l">${L[i]}</span><span>${esc(t)}</span></button>`; }).join('');
   const vote = (label, key, init) => {
     const set = new Set(init);
-    M.innerHTML = `<span class="eyebrow">${label}</span><p class="q">${esc(st.q)}</p><p class="hint">Plusieurs réponses possibles.</p>${opts(set, false)}<button class="send" id="go">Envoyer</button>`;
+    M.innerHTML = `<span class="eyebrow">${label}</span><p class="q">${esc(st.q)}</p>${st.fig ? FIGS[st.fig]() : ''}<p class="hint">Plusieurs réponses possibles.</p>${opts(set, false)}<button class="send" id="go">Envoyer</button>`;
     M.querySelectorAll('.opt').forEach((b) => b.onclick = () => { const i = +b.dataset.i; set.has(i) ? set.delete(i) : set.add(i); b.classList.toggle('sel'); });
     document.getElementById('go').onclick = () => send(key, { s: [...set].sort().map((i) => L[i]).join('') });
     pending = { key, get: () => (set.size ? { s: [...set].sort().map((i) => L[i]).join('') } : null) };

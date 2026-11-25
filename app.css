@@ -136,3 +136,7 @@ main.cards .slide:not(.solo) .pts{font-size:1.3rem}
 @media (prefers-reduced-motion:reduce){.flash-end{animation:flashEndR 2.1s linear forwards}@keyframes flashEndR{0%,85%{opacity:.95}100%{opacity:0}}}
 .chrono{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-variant-numeric:tabular-nums;border-radius:99px;padding:.25em .9em;background:var(--plum);color:#fff}
 .chrono.warn{background:#c2a05a}.chrono.hot{background:#b5523b}.chrono.done{background:#6b7280}
+main.cards .cap.big{display:flex;gap:.9rem;align-items:flex-start;font-size:1.45rem;line-height:1.45;background:var(--surface);border-left:.45rem solid var(--sage);border-radius:.7rem;padding:.9rem 1.2rem;box-shadow:0 2px 12px -6px rgba(0,0,0,.25);margin-top:.4rem}
+main.cards .cap.big.c1{border-left-color:var(--honey)} main.cards .cap.big.c2{border-left-color:var(--plum)}
+main.cards .cap.big .capn{flex:none;background:var(--plum);color:#fff;border-radius:99px;padding:.15em .7em;font-size:.75em;font-weight:700;margin-top:.2em;white-space:nowrap}
+main.cards .cap.big b{color:var(--ink)} main.cards .cap.big mark{background:none;color:var(--honey);font-weight:700}

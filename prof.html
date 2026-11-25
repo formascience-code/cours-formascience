@@ -81,6 +81,8 @@ footer .info{color:var(--muted);font-variant-numeric:tabular-nums}
 #app.withpad main{flex:0 1 auto;padding-bottom:.4rem}
 .pts.compact{font-size:1.05rem;gap:.45em}
 .pts.compact li.stp{padding:.25em .45em}
+.figsvg.small .anim-svg{max-height:34vh}
+.figsvg.small + .bars{font-size:1.05rem;gap:.35rem}
 </style>
 </head>
 <body>
@@ -246,6 +248,13 @@ function chronoProf(st) {
   };
   up(); if (B.now() < state.until) ctick = setInterval(up, 250);
 }
+/* Légendes des cours « cartes » : mots-clés en gras, chiffres à retenir en doré */
+function capFmt(t) {
+  let h = esc(t);
+  h = h.replace(/(n\s?\+\s?\d+|\d+(?:[,.]\d+)?(?:-\d+)?\s?(?:°C|nt|pb|kb|Mb)\b|\d+(?:[,.]\d+)?(?:-\d+)?\s?°C|2ⁿ|\d+ millions)/g, '<mark>$1</mark>');
+  (C.capBold || []).forEach((w) => { h = h.replace(new RegExp('(^|[\\s(«])(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=[\\s,.:;)»!]|$)', 'g'), '$1<b>$2</b>'); });
+  return h;
+}
 const head = (st, eyebrow) => `<span class="eyebrow">${esc(eyebrow || C.parts[st.part])}</span><h1 class="title">${esc(st.title)}</h1>`;
 const nAns = (k) => `<span class="wait"><b class="counter">${vals(k).length}</b> réponse(s) · <span id="cnt2">${count}</span> connectés</span>`;
 const R = {};
@@ -270,7 +279,8 @@ R.explain = (st, m) => {
   let body;
   if (sl.anim) {
     const A = ANIMS[sl.anim], svg = A.draw(k), vb = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), ratio = vb ? vb[1] / vb[2] : 2.4;
-    const box = `<div class="animbox" style="max-width:calc((100dvh - ${sl.nocap ? 13 : 17}rem) * ${ratio.toFixed(2)})">${svg}${sl.nocap ? '' : `<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div>`}</div>`;
+    const big = C.style === 'cards';
+    const box = `<div class="animbox" style="max-width:calc((100dvh - ${sl.nocap ? 13 : big ? 22 : 17}rem) * ${ratio.toFixed(2)})">${svg}${sl.nocap ? '' : big ? `<div class="cap big c${k % 3}"><span class="capn">${k + 1} / ${A.caps.length}</span><span>${capFmt(A.caps[k])}</span></div>` : `<div class="cap"><b>${k + 1} / ${A.caps.length}.</b> ${esc(A.caps[k])}</div>`}</div>`;
     const li = (p) => (typeof p === 'string' ? `<li>${p}</li>` : k < p.k ? '' : `<li class="stp ${p.k === k ? 'cur' : 'past'}"><span class="num">${p.n}</span><span>${p.t}</span></li>`);
     body = sl.pts ? `<div class="slide" style="grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr)"><ul class="pts${sl.compact ? ' compact' : ''}">${sl.pts.map(li).join('')}</ul>${box}</div>` : box;
   } else if (sl.table) {
@@ -358,9 +368,9 @@ R.number = (st, m) => {
 };
 R.match = (st, m) => {
   const k = 's' + state.step, v = vals(k), ph = state.phase;
-  let h = `${head(st)}<p class="q">${esc(st.q)}</p>`;
-  if (ph === 'open') { m.innerHTML = h + nAns(k); return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
-  m.innerHTML = h + `<div class="bars">${st.pairs.map((p, i) => { const r = pct(v.filter((x) => x.a && x.a[i] === p[1]).length, v.length); return `<div class="bar good"><span class="k">${i + 1}</span><div><div class="txt"><b>${esc(p[0])}</b> → ${esc(p[1])}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`; }).join('')}</div><p class="wait">% d'étudiants qui ont trouvé chaque association · ${v.length} réponse(s)</p>`;
+  let h = `${head(st)}<p class="q">${esc(st.q)}</p>${st.fig ? `<div class="figsvg small">${FIGS[st.fig]()}</div>` : ''}`;
+  if (ph === 'open') { m.innerHTML = h + (st.fig ? `<div class="bars">${st.pairs.map((p) => `<div class="bar"><span class="k"></span><div><div class="txt"><b>${esc(p[0])}</b> → ?</div></div><span class="pct"></span></div>`).join('')}</div>` : '') + nAns(k); return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
+  m.innerHTML = h + `<div class="bars">${st.pairs.map((p, i) => { const r = pct(v.filter((x) => x.a && x.a[i] === p[1]).length, v.length); return `<div class="bar good"><span class="k">${i + 1}</span><div><div class="txt"><b>${esc(p[0])}</b> → ${esc(p[1])}</div><div class="track"><div class="fill" style="width:${r}%"></div></div></div><span class="pct">${r} %</span></div>`; }).join('')}</div><p class="wait">% d'étudiants qui ont trouvé chaque association · ${v.length} réponse(s)</p>${st.ex ? `<p class="correction"><b>Correction.</b> ${esc(st.ex)}</p>` : ''}`;
   return null;
 };
 R.order = (st, m) => {
@@ -404,12 +414,14 @@ R.peer = (st, m) => {
   const share = (v, i) => pct(v.filter((x) => (x.s || '').includes(L[i])).length, v.length);
   const bars = (two, rev) => `<div class="bars">${st.items.map((t, i) => { const good = rev && st.ok.includes(L[i]), a = share(v1, i), b = share(v2, i);
     return `<div class="bar ${good ? 'good' : ''}"><span class="k">${L[i]}</span><div><div class="txt">${esc(t)}</div><div class="track ${two ? 'two' : ''}">${two ? `<div class="fill r1" style="width:${a}%"></div>` : ''}<div class="fill" style="width:${two ? b : a}%"></div></div>${rev ? `<div class="ex">${esc(st.ex[i])}</div>` : ''}</div><span class="pct">${two ? b : a} %</span></div>`; }).join('')}</div>`;
+  const fig = st.fig ? `<div class="figsvg small">${FIGS[st.fig]()}</div>` : '';
+  const list = st.fig ? `<div class="bars">${st.items.map((t, i) => `<div class="bar"><span class="k">${L[i]}</span><div><div class="txt">${esc(t)}</div></div><span class="pct"></span></div>`).join('')}</div>` : '';
   const leg = (rev) => `<div class="legend"><span><span class="sw" style="background:var(--line)"></span>1er vote (${v1.length})</span><span><span class="sw" style="background:${rev ? 'var(--ok)' : 'var(--sage)'}"></span>2e vote (${v2.length})</span></div>`;
-  if (ph === 'r1') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er vote')}<p class="q">${esc(st.q)}</p><p class="wait">Vote seul, sans en parler à ton voisin.</p>${nAns(k + 'r1')}`; return ['Afficher le 1er vote', () => set({ phase: 'r1res' })]; }
-  if (ph === 'r1res' || ph === 'disc') { m.innerHTML = `<span class="eyebrow">${esc(C.parts[st.part])} · résultats du 1er vote</span><h1 class="title">Écoute l'analyse du QCM par Mazen</h1>${bars(false, false)}<p class="wait">% d'étudiants qui ont coché chaque proposition (${v1.length} votes) · pas de correction à ce stade</p>`; return ['Relancer le vote', () => set({ phase: 'r2' })]; }
-  if (ph === 'r2') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 2e vote')}<p class="q">${esc(st.q)}</p><p class="wait">Revote : tu peux changer d'avis.</p>${nAns(k + 'r2')}`; return ['Afficher les 2 votes', () => set({ phase: 'r2res' })]; }
-  if (ph === 'r2res') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er et 2e votes')}${bars(true, false)}${leg(false)}`; return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
-  m.innerHTML = `${head(st, 'Correction · réponses ' + st.ok.split('').join(', '))}${bars(true, true)}${leg(true)}`; return null;
+  if (ph === 'r1') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er vote')}<p class="q">${esc(st.q)}</p>${fig}${list}<p class="wait">Vote seul, sans en parler à ton voisin.</p>${nAns(k + 'r1')}`; return ['Afficher le 1er vote', () => set({ phase: 'r1res' })]; }
+  if (ph === 'r1res' || ph === 'disc') { m.innerHTML = `<span class="eyebrow">${esc(C.parts[st.part])} · résultats du 1er vote</span><h1 class="title">Écoute l'analyse du QCM par Mazen</h1>${fig}${bars(false, false)}<p class="wait">% d'étudiants qui ont coché chaque proposition (${v1.length} votes) · pas de correction à ce stade</p>`; return ['Relancer le vote', () => set({ phase: 'r2' })]; }
+  if (ph === 'r2') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 2e vote')}<p class="q">${esc(st.q)}</p>${fig}${list}<p class="wait">Revote : tu peux changer d'avis.</p>${nAns(k + 'r2')}`; return ['Afficher les 2 votes', () => set({ phase: 'r2res' })]; }
+  if (ph === 'r2res') { m.innerHTML = `${head(st, C.parts[st.part] + ' · 1er et 2e votes')}${fig}${bars(true, false)}${leg(false)}`; return ['Afficher la correction', () => set({ phase: 'reveal' })]; }
+  m.innerHTML = `${head(st, 'Correction · réponses ' + st.ok.split('').join(', '))}${fig}${bars(true, true)}${leg(true)}`; return null;
 };
 function quizScores(st) {
   const k = 's' + state.step, sc = {}, names = {};
